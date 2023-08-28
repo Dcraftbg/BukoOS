@@ -3,7 +3,7 @@ BukoOS is a really basic operating system using Limine as its bootloader.
 All source code falls under the MIT license. 
 
 Honorable mention to:
-- [CorruptedByCPU](https://github.com/CorruptedByCPU) who helped me understand the setup for the project, and inspired me to make the OS (Check his github out, he does really awesome OS things)
+- [CorruptedByCPU](https://github.com/CorruptedByCPU) who helped me understand his setup, and inspired me to make the OS (Check his github out, he does really awesome OS things)
 # Requirements:
 - make                               *Note you can also install it in the Linux environment and use it that way, but you will have to enter the environment every time*
 **Linux environment requirements**:
