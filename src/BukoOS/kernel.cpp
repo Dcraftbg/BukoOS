@@ -5,7 +5,7 @@
 #include "libs/display.h"
 #include "libs/terminal.h"
 
-
+#define SYS_DIST_URL "https://github.com/Dcraftbg/BukoOS"
 #define SYS_VERSION "0.0.1A"
 #ifdef BUKO_DEBUG
    #define SYS_MODE "Debug"
@@ -95,7 +95,7 @@ extern "C" void kernel() {
     //putStr(display,"\tHello World!\r\tI overwrote that shit :D");
 
     putStr(display, "Hello and welcome to BukoOS!\n");
-    putStr(display, "Distribution from DcraftBg\n");
+    putStr(display, "Distribution from DcraftBg " SYS_DIST_URL "\n");
     //putStr(display, "System version ");    putStr(display, SYS_VERSION);    putStr(display, "\n");
     stdTerminal::printf(display, "System version %s in %s mode\n", SYS_VERSION, SYS_MODE);
     putStr(display, "> ");
