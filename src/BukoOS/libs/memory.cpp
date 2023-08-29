@@ -19,4 +19,9 @@ uint8_t memcmp(const void* s1, const void* s2, size_t size) {
     }
     return 0;
 }
-
+void* memmove(void* dst, const void* src, size_t size) {
+    for(size_t i=0; i < size; ++i) {
+        ((char*)dst)[i]=((char*)src)[i];
+    }
+    return dst;
+}
