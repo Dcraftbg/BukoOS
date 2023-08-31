@@ -7,7 +7,7 @@
 //#define BUKO_PRINT_MEM_INFO
 //#define BUKO_TEST_MEMORY_PAGE_MAP
 #define SYS_DIST_URL "https://github.com/Dcraftbg/BukoOS"
-#define SYS_VERSION "0.2.1A"
+#define SYS_VERSION "0.2.2A"
 #ifdef BUKO_DEBUG
    #define SYS_MODE "Debug"
 #elif defined(BUKO_RELEASE)
@@ -37,6 +37,15 @@ struct MemoryMap {
     size_t pageCount;
     size_t pageSize;
     size_t byteSize;
+    inline void setPageStatus(size_t i, char status) {
+       char* pageSet = &((char*)base)[i/8];
+       *pageSet &= ~(1 << i%8);
+       *pageSet |= (status << i%8);
+    }
+    inline char getPageStatus(size_t i) {
+       char* pageSet = &((char*)base)[i/8];
+       return ((*pageSet) & (1<<i%8))>>i%8;
+    }
 };
 MemoryMap GlobalMemoryMap={NULL,0,0};
 
@@ -94,15 +103,6 @@ const char* limine_memmap_type_to_string(uint64_t type) {
 #include "libs/memory.h"
 #define PAGE_STATUS_UNUSABLE 0
 #define PAGE_STATUS_USABLE   1
-inline void setPageStatus(void* memoryMap, size_t i, char status) {
-    char* pageSet = &((char*)memoryMap)[i/8];
-    *pageSet &= ~(1 << i%8);
-    *pageSet |= (status << i%8);
-}
-inline char getPageStatus(void* memoryMap, size_t i) {
-     char* pageSet = &((char*)memoryMap)[i/8];
-     return ((*pageSet) & (1<<i%8))>>i%8;
-}
 extern "C" void kernel() {    
 	if( limine_framebuffer_request.response == NULL || limine_framebuffer_request.response->framebuffer_count != 1 || limine_framebuffer_request.response->framebuffers[0] -> bpp != 32 )
 		for(;;);
@@ -231,14 +231,14 @@ extern "C" void kernel() {
         for(size_t j=PageStart+(i==(size_t)BiggestUsableIndex ? GlobalMemoryMap.pageSize : 0); j < PageStart+PageCount; ++j) {
            switch(entry->type) {
            case LIMINE_MEMMAP_USABLE:
-                passed = getPageStatus((void*)GlobalMemoryMap.base, j)==PAGE_STATUS_USABLE;
+                passed = GlobalMemoryMap.getPageStatus(j)==PAGE_STATUS_USABLE;
                 if(!passed) {
                    failureEntryIndex=i;
                    failurePageIndex=j;
                 }
                 break;
            default:
-                passed = getPageStatus((void*)GlobalMemoryMap.base, j)==PAGE_STATUS_UNUSABLE;
+                passed = GlobalMemoryMap.getPageStatus(j)==PAGE_STATUS_UNUSABLE;
                 if(!passed) {
                    failureEntryIndex=i;
                    failurePageIndex=j;
