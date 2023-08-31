@@ -7,7 +7,7 @@
 //#define BUKO_PRINT_MEM_INFO
 //#define BUKO_TEST_MEMORY_PAGE_MAP
 #define SYS_DIST_URL "https://github.com/Dcraftbg/BukoOS"
-#define SYS_VERSION "0.2.0A"
+#define SYS_VERSION "0.2.1A"
 #ifdef BUKO_DEBUG
    #define SYS_MODE "Debug"
 #elif defined(BUKO_RELEASE)
@@ -32,6 +32,14 @@ static volatile limine_memmap_request limine_memmap_request = {
 // DisplayInfo globalInfo={0};
 
 #include "libs/string.h"
+struct MemoryMap {
+    void* base;
+    size_t pageCount;
+    size_t pageSize;
+    size_t byteSize;
+};
+MemoryMap GlobalMemoryMap={NULL,0,0};
+
 /*
 #define LIMINE_MEMMAP_USABLE                 0
 #define LIMINE_MEMMAP_RESERVED               1
@@ -180,17 +188,22 @@ extern "C" void kernel() {
     putC(display, '>');
     putC(display,'\n');
 #endif
-    auto mapentry = limine_memmap_request.response->entries[BiggestUsableIndex];
-    size_t TotalAmountOfPages   = totalMemory/4096;
-    size_t MemMapByteSize       = TotalAmountOfPages/8;
-    if(MemMapByteSize==0) {
+    {
+        auto mapentry            = limine_memmap_request.response->entries[BiggestUsableIndex];
+        GlobalMemoryMap.base     = (void*)mapentry->base;
+        GlobalMemoryMap.pageCount= totalMemory/4096;
+        GlobalMemoryMap.byteSize = GlobalMemoryMap.pageCount/8;
+    }
+    if(GlobalMemoryMap.byteSize==0) {
         stdTerminal::printf(display, "ERROR: Cannot allocate MemMapByteSize of 0\n");
         for(;;) asm volatile("hlt" : "+g"(running));
     } 
-    size_t MemMapPageAllocCount = (MemMapByteSize-1)/4096+1;
-    memset((void*)mapentry->base, 0, MemMapPageAllocCount*4096);
+    {
+       GlobalMemoryMap.pageSize = (GlobalMemoryMap.byteSize-1)/4096+1;
+       memset((void*)GlobalMemoryMap.base, 0, GlobalMemoryMap.pageSize*4096);
+    }
 #ifdef BUKO_PRINT_MEM_INFO
-    stdTerminal::printf(display, "Allocating memory map at: %p with size of: %l bytes (%l pages, real size(%l))\n",mapentry->base,MemMapPageAllocCount*4096, MemMapPageAllocCount,MemMapByteSize);
+    stdTerminal::printf(display, "Allocating memory map at: %p with size of: %l bytes (%l pages, real size(%l))\n",GlobalMemoryMap.base,GlobalMemoryMap.pageSize*4096, GlobalMemoryMap.pageCount,GlobalMemoryMap.byteSize);
 #endif
     for(size_t i=0; i < limine_memmap_request.response->entry_count; ++i) {
         auto entry = limine_memmap_request.response->entries[i];
@@ -198,8 +211,8 @@ extern "C" void kernel() {
         if(entry->type == LIMINE_MEMMAP_USABLE) { 
             size_t PageIndex=(entry->base/4096);
             //stdTerminal::printf(display,"Got to usable. Starting at page index: %l, length: %l\n", PageIndex, entryPageCount);
-            for(size_t j =((i==(size_t)BiggestUsableIndex) ? MemMapPageAllocCount : 0); j < entryPageCount; ++j) {
-                char* pageSet = &((char*)mapentry->base)[(PageIndex+j)/8];
+            for(size_t j =((i==(size_t)BiggestUsableIndex) ? GlobalMemoryMap.pageSize : 0); j < entryPageCount; ++j) {
+                char* pageSet = &((char*)GlobalMemoryMap.base)[(PageIndex+j)/8];
                 *pageSet |= (1 << (PageIndex+j)%8);
             }
         }
@@ -215,17 +228,17 @@ extern "C" void kernel() {
         size_t PageStart = (entry->base / 4096);
         size_t PageCount = entry->length/4096;
         //stdTerminal::printf(display, "%l> Starting at %l with %l pages left\n",i,PageStart,PageCount);
-        for(size_t j=PageStart+(i==(size_t)BiggestUsableIndex ? MemMapPageAllocCount : 0); j < PageStart+PageCount; ++j) {
+        for(size_t j=PageStart+(i==(size_t)BiggestUsableIndex ? GlobalMemoryMap.pageSize : 0); j < PageStart+PageCount; ++j) {
            switch(entry->type) {
            case LIMINE_MEMMAP_USABLE:
-                passed = getPageStatus((void*)mapentry->base, j)==PAGE_STATUS_USABLE;
+                passed = getPageStatus((void*)GlobalMemoryMap.base, j)==PAGE_STATUS_USABLE;
                 if(!passed) {
                    failureEntryIndex=i;
                    failurePageIndex=j;
                 }
                 break;
            default:
-                passed = getPageStatus((void*)mapentry->base, j)==PAGE_STATUS_UNUSABLE;
+                passed = getPageStatus((void*)GlobalMemoryMap.base, j)==PAGE_STATUS_UNUSABLE;
                 if(!passed) {
                    failureEntryIndex=i;
                    failurePageIndex=j;
