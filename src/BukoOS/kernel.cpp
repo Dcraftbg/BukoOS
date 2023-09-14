@@ -4,10 +4,9 @@
 #include "libs/memory.h"
 #include "libs/display.h"
 #include "libs/terminal.h"
-//#define BUKO_PRINT_MEM_INFO
-//#define BUKO_TEST_MEMORY_PAGE_MAP
+#include "config.h"
 #define SYS_DIST_URL "https://github.com/Dcraftbg/BukoOS"
-#define SYS_VERSION "0.2.3A"
+#define SYS_VERSION "0.3.0A"
 #ifdef BUKO_DEBUG
    #define SYS_MODE "Debug"
 #elif defined(BUKO_RELEASE)
@@ -148,9 +147,8 @@ extern "C" void kernel() {
     Pixel* orgpixels = pixels;
     for(size_t y=0; y<height; ++y) {
         for (size_t x=0; x<width; ++x) {
-             pixels[x] = {0, 0, 0, 0};
-             pixels[x].a = 0xFF;   
-        }
+             pixels[x] = CONFIG_BACKGROUND_COLOR;
+         }
         pixels = (Pixel*)((uintptr_t)pixels +  pitch);
     }
     pixels=orgpixels;

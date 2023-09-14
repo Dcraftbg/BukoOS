@@ -36,6 +36,8 @@ build_iso:
 	$(LINUX_ENV) xorriso -as mkisofs -b limine-bios-cd.bin -no-emul-boot -boot-load-size 4 -boot-info-table --efi-boot limine-uefi-cd.bin -efi-boot-part --efi-boot-image $(OBJDEST) out/bin -o out/bin/OS.iso
 run_qemu:
 	qemu-system-x86_64.exe -cpu max -smp 2 -m 128 -cdrom out/bin/OS.iso
+# debugger_qemu_testing:
+#	qemu-system-x86_64.exe -cpu max -smp 2 -m 128 -cdrom out/bin/OS.iso -S -s
 install_limine:
 	vendor/limine/limine bios-install out/bin/OS.iso
 clean:
