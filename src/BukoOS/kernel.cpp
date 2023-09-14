@@ -161,7 +161,7 @@ extern "C" void kernel() {
 
 
     putStr(display, "Hello and welcome to BukoOS!\n");
-    putStr(display, "Distribution from DcraftBg " SYS_DIST_URL "\n"); 
+    putStr(display, "Distribution from Dcraftbg " SYS_DIST_URL "\n"); 
     stdTerminal::printf(display, "System version %s in %s mode\n", SYS_VERSION, SYS_MODE);
 #ifdef BUKO_PRINT_MEM_INFO
     stdTerminal::printf(display, "Number of map entries available: %d\n", (int)limine_memmap_request.response->entry_count);
