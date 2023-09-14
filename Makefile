@@ -18,8 +18,9 @@ LINKERSCRIPT:=linker/link.ld
 OUTFILE := out/bin/kernel.iso
 
 all: init
-
-
+# NOTE: Recommended for faster compilation time
+eenv:
+	$(LINUX_ENV)
 #  -fversion-loops-for-strides -ftree-partial-pre -ftree-loop-distribution -fsplit-paths -fsplit-loops -fpredictive-commoning -fpeel-loops -floop-unroll-and-jam -floop-interchange -fipa-cp-clone -funswitch-loops 
 compile_debug:
 	$(LINUX_ENV) $(CC) -g $(CC_FLAGS) $(SOURCE_FILES) -o $(OBJDEST) -D BUKO_DEBUG -T $(LINKERSCRIPT) -I $(INCLUDES)
