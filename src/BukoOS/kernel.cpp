@@ -6,7 +6,7 @@
 #include "libs/terminal.h"
 #include "config.h"
 #define SYS_DIST_URL "https://github.com/Dcraftbg/BukoOS"
-#define SYS_VERSION "0.3.0A"
+#define SYS_VERSION "0.3.1A"
 #ifdef BUKO_DEBUG
    #define SYS_MODE "Debug"
 #elif defined(BUKO_RELEASE)
@@ -145,16 +145,25 @@ extern "C" void kernel() {
     size_t pitch = limine_framebuffer_request.response->framebuffers[0]->pitch;
 	Pixel* pixels = (Pixel*) limine_framebuffer_request.response -> framebuffers[ 0 ] -> address;
     Pixel* orgpixels = pixels;
-    for(size_t y=0; y<height; ++y) {
+    for(size_t y=0; y<height-20; ++y) {
         for (size_t x=0; x<width; ++x) {
              pixels[x] = CONFIG_BACKGROUND_COLOR;
          }
         pixels = (Pixel*)((uintptr_t)pixels +  pitch);
     }
+    for(size_t y=height-20; y<height; ++y) {
+        for (size_t x=0; x<width; ++x) {
+        #ifndef CONFIG_NO_PROGRESSBAR
+            pixels[x] = CONFIG_PROGRESS_BAR_COLOR;
+        #else
+            pixels[x] = CONFIG_BACKGROUND_COLOR;
+        #endif
+        }
+        pixels = (Pixel*)((uintptr_t)pixels +  pitch);
+    }
     pixels=orgpixels;
     DisplayInfo display(pixels, width, height, pitch);
-
-
+    stdTerminal::pb_printf(display, "Loading display information...");
     volatile bool running=true;
 
 
@@ -170,6 +179,8 @@ extern "C" void kernel() {
     //size_t MAxReclaimableSize=0;
     int64_t BiggestUsableIndex=-1;
     size_t  BiggestUsableSize = 0;
+
+    stdTerminal::pb_printf(display, "Loading memory information..." );
     for(size_t i = 0; i < limine_memmap_request.response->entry_count-1; ++i) {
 #ifdef BUKO_PRINT_MEM_INFO
         if(i < 10)  stdTerminal::printf(display, "%d ", i);
@@ -239,6 +250,7 @@ extern "C" void kernel() {
 #ifdef BUKO_PRINT_MEM_INFO
     stdTerminal::printf(display, "Allocating memory map at: %p with size of: %l bytes (%l pages, real size(%l)) %l amount of pages mapped\n",GlobalMemoryMap.base,GlobalMemoryMap.pageSize*4096, GlobalMemoryMap.pageSize,GlobalMemoryMap.byteSize, GlobalMemoryMap.pageCount);
 #endif
+    stdTerminal::pb_printf(display, "Setting memory map entries...");
     for(size_t i=0; i < limine_memmap_request.response->entry_count-1; ++i) {
         auto entry = limine_memmap_request.response->entries[i];
         size_t entryPageCount = entry->length/4096;
@@ -252,6 +264,7 @@ extern "C" void kernel() {
         }
     }
 #ifdef BUKO_TEST_MEMORY_PAGE_MAP
+    stdTerminal::pb_printf(display, "Testing memory map...");
     bool passed=true;
     size_t failureEntryIndex=0;
     size_t failurePageIndex =0;
@@ -295,6 +308,7 @@ extern "C" void kernel() {
     //stdTerminal::printf(display,"Allocated 79 pages at %p\n",GlobalMemoryMap.allocate(79));
     stdTerminal::printf(display,"Allocated %l pages at %p\n", pcount,GlobalMemoryMap.allocate(pcount));
 #endif
+    stdTerminal::pb_printf(display, "Done!");
     putStr(display, "> ");
     while(running) {
         asm volatile("hlt" : "+g"(running));
