@@ -19,10 +19,12 @@ public:
 public:
     DisplayInfo(Pixel* pixels, size_t width, size_t height, size_t pitch, size_t Xoff=0, size_t Yoff=0)
             : pixels(pixels), width(width), height(height), pitch(pitch), Xoff(Xoff), Yoff(Yoff) {}
-    void setAt(size_t X, size_t Y, Pixel pixel) {
+    inline void setAt(size_t X, size_t Y, Pixel pixel) {
 //        Pixel* orgpixels=pixels;
+        if(!pixels) return;
         pixels[X+Xoff+((Yoff+Y)*pitch/sizeof(Pixel))]=pixel;
     }
+    inline bool isInvalid() const { return pixels==0;}
     inline DisplayInfo slice(size_t Xoff, size_t Yoff, size_t width, size_t height) {
         return DisplayInfo(pixels, width, height, pitch, Xoff, Yoff);
     }

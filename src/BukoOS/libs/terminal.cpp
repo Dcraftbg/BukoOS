@@ -1,10 +1,13 @@
 #include "terminal.h"
+#include <cstdarg>
+#ifndef BUKO_SERVER_BUILD
 // TODO: Include cursor in display, since we might have multiple displays at once
 Cursor_T cursor={0,0};
 Cursor_T& getGlobalCursor() {
     return cursor;
 }
 void putCharAt(DisplayInfo info,Cursor_T& cursor, char chr, Pixel color) {
+    if(info.isInvalid()) return;
     unsigned char* fontPtr = fontGlythBuffer+(chr*fontHeader.charsize);
     for(size_t y=cursor.y; y < cursor.y+16; ++y) {
         for (size_t x = cursor.x; x < cursor.x+8; ++x) {
@@ -16,7 +19,7 @@ void putCharAt(DisplayInfo info,Cursor_T& cursor, char chr, Pixel color) {
     }
 }
 void putCAt(DisplayInfo info, Cursor_T& cursor, char c, Pixel color) {
-   if(cursor.y >= info.height) return;
+   if(info.isInvalid() || cursor.y >= info.height) return;
 
    switch (c) {
         case '\n':
@@ -50,7 +53,7 @@ void putCAt(DisplayInfo info, Cursor_T& cursor, char c, Pixel color) {
         }
 }
 void putStrAt(DisplayInfo info, Cursor_T& cursor, const char* str, Pixel color/*=CONFIG_TEXT_COLOR*/) {
-    if(cursor.y >= info.height) return;
+    if(info.isInvalid() || cursor.y >= info.height) return;
     while(*str!='\0') {
         switch (*str) {
         case '\n':
@@ -85,7 +88,7 @@ void putStrAt(DisplayInfo info, Cursor_T& cursor, const char* str, Pixel color/*
    }
 }
 void putStr(DisplayInfo info, const char* str, Pixel color/*=Pixel(0xFF,0xFF,0xFF,0xFF)*/) {
-   if(cursor.y >= info.height) return;
+   if(info.isInvalid() || cursor.y >= info.height) return;
    while(*str!='\0') {
         switch (*str) {
         case '\n':
@@ -110,17 +113,16 @@ void putStr(DisplayInfo info, const char* str, Pixel color/*=Pixel(0xFF,0xFF,0xF
                 break;
         default:
                 if(cursor.x+8 >= info.width) {
-                        cursor.y+=16;
-                        cursor.x = 0;
+                    cursor.y+=16;
+                    cursor.x = 0;
                 }
-                putCharAt(info,cursor,*str,color);
-                cursor.x+=8;
+                putC(info,*str,color);
         }
         str++;
    }
 }
 void putC(DisplayInfo info, char c, Pixel color) {
-   if(cursor.y >= info.height) return;
+   if(info.isInvalid() || cursor.y >= info.height) return;
 
    switch (c) {
         case '\n':
@@ -154,10 +156,11 @@ void putC(DisplayInfo info, char c, Pixel color) {
         }
 }
 
-#include <cstdarg>
+
 #include "string.h"
 #include "memory.h"
 void stdTerminal::printfAt(DisplayInfo info, Cursor_T& cursor, const char* formatter, ...) {
+   if(info.isInvalid()) return;
    va_list args; 
    va_start(args,formatter);
    char* format = (char*) formatter;
@@ -190,8 +193,8 @@ void stdTerminal::printfAt(DisplayInfo info, Cursor_T& cursor, const char* forma
                 } break;
                 case 'p': {
                        void* val = va_arg(args, void*);
-                       char buf[20] = {0};
-                       stdString::itohex(buf, 20, (int64_t)val);
+                       char buf[30] = {0};
+                       stdString::itohex(buf, 30, (uint64_t)val);
                        putStr(info,"0x");
                        putStr(info, buf);
                 } break;
@@ -212,6 +215,7 @@ void stdTerminal::printfAt(DisplayInfo info, Cursor_T& cursor, const char* forma
 
 }
 void stdTerminal::printf(DisplayInfo info, const char* formatter, ...) {
+   if(info.isInvalid()) return;
    va_list args; 
    va_start(args,formatter);
    char* format = (char*) formatter;
@@ -244,8 +248,8 @@ void stdTerminal::printf(DisplayInfo info, const char* formatter, ...) {
                 } break;
                 case 'p': {
                        void* val = va_arg(args, void*);
-                       char buf[20] = {0};
-                       stdString::itohex(buf, 20, (int64_t)val);
+                       char buf[30] = {0};
+                       stdString::itohex(buf, 30, (uint64_t)val);
                        putStr(info,"0x");
                        putStr(info, buf);
                 } break;
@@ -264,43 +268,8 @@ void stdTerminal::printf(DisplayInfo info, const char* formatter, ...) {
    } 
    va_end(args);
 }
-size_t stdTerminal::sprintf(char* buffer, size_t size, const char* formatter, ...) {
-    size_t bytesWritten=0;
-    char* format = (char*) formatter;
-    va_list args;
-    va_start(args, formatter);
-    while (*format != '\0' && bytesWritten<size) {
-           switch (*format) {
-           case '%':
-                format++;
-                switch(*format) {
-                case 's': {
-                       char* str=(char*)(va_arg(args, const char*));
-                       while(*str != '\0' && bytesWritten < size) {
-                          buffer[bytesWritten] = *str;
-                          str++;
-                          bytesWritten++;
-                       }
-                } break;
-                case '\0':
-                       buffer[bytesWritten]='%';
-                       return bytesWritten;
-                default:
-                       buffer[bytesWritten]='%';
-                       if (bytesWritten+1 < size) buffer[bytesWritten] = *format;
-                } 
-           break;
-           default:
-                buffer[bytesWritten] = *format;
-           }
-           bytesWritten++;
-           format++;
-    }
-    va_end(args);
-    return bytesWritten;
-}
 void stdTerminal::pb_printf(DisplayInfo info, const char* formatter, ...) {
-#ifndef CONFIG_NO_PROGRESSBAR
+   if(info.isInvalid()) return;
    for(size_t y=info.height-20; y<info.height; y++) {
         for(size_t x=0; x< info.width; x++) {
            info.setAt(x,y,CONFIG_PROGRESS_BAR_COLOR);
@@ -361,5 +330,41 @@ void stdTerminal::pb_printf(DisplayInfo info, const char* formatter, ...) {
            format++;
    } 
    va_end(args);
-#endif
 }
+#endif
+size_t stdTerminal::sprintf(char* buffer, size_t size, const char* formatter, ...) {
+    size_t bytesWritten=0;
+    char* format = (char*) formatter;
+    va_list args;
+    va_start(args, formatter);
+    while (*format != '\0' && bytesWritten<size) {
+           switch (*format) {
+           case '%':
+                format++;
+                switch(*format) {
+                case 's': {
+                       char* str=(char*)(va_arg(args, const char*));
+                       while(*str != '\0' && bytesWritten < size) {
+                          buffer[bytesWritten] = *str;
+                          str++;
+                          bytesWritten++;
+                       }
+                } break;
+                case '\0':
+                       buffer[bytesWritten]='%';
+                       return bytesWritten;
+                default:
+                       buffer[bytesWritten]='%';
+                       if (bytesWritten+1 < size) buffer[bytesWritten] = *format;
+                } 
+           break;
+           default:
+                buffer[bytesWritten] = *format;
+           }
+           bytesWritten++;
+           format++;
+    }
+    va_end(args);
+    return bytesWritten;
+}
+
