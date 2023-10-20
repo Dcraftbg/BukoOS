@@ -415,7 +415,7 @@ extern "C" void kernel() {
 
     KERNEL_PRINTF(display, "gdt? %l\n", &gdt);
 
-    gdt_descriptor.size = sizeof(gdt)-1;
+    gdt_descriptor.size = 4096;
 
     gdt_descriptor.addr = (uint64_t)&gdt;
 
@@ -423,6 +423,13 @@ extern "C" void kernel() {
 
     KERNEL_PRINTF(display, "gdt_descriptor: %l %d\n", gdt_descriptor.addr,(uint32_t)gdt_descriptor.size);
 
+    uint64_t *gdt_table = (uint64_t *) &gdt;
+    gdt_table[ 0 ] = 0x0000000000000000;
+    gdt_table[ 1 ] = 0x0020990000000000;
+    gdt_table[ 2 ] = 0x0020930000000000;
+    gdt_table[ 3 ] = 0x0000000000000000;
+    gdt_table[ 4 ] = 0x0020F30000000000;
+    gdt_table[ 5 ] = 0x0020F90000000000;
     asm volatile ("lgdt %0" : : "m"(gdt_descriptor));
 
     //asm volatile ("sgdt %0" : : "m"(gdt_descriptor));
