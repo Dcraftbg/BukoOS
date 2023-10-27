@@ -6,6 +6,9 @@
 #include "libs/terminal.h"
 #include "libs/gdt.h"
 #include "libs/idt.h"
+#include "libs/portlib.h"
+#include "libs/p2keyboard.h"
+#include "libs/stdkeyboard.h"
 #include "config.h"
 #define SYS_DIST_URL "https://github.com/Dcraftbg/BukoOS"
 #define SYS_VERSION "0.3.1A"
@@ -30,7 +33,8 @@ static volatile limine_memmap_request limine_memmap_request = {
 };
 #define PAGE_STATUS_UNUSABLE 0
 #define PAGE_STATUS_USABLE   1
-#define PAGE_STATUS_INVALID_INDEX -1                // note: only returned by getPageStatus if the index is out of range
+#define PAGE_STATUS_INVALID_INDEX -1               
+// note: only returned by getPageStatus if the index is out of range^
 // Consider:
 // DisplayInfo globalInfo={0};
 
@@ -100,7 +104,6 @@ struct MemoryMap {
 
                 size_t pIndex = 0;
                 size_t pageLength = limine_memmap_request.response->entries[i]->length/4096;
-                //KERNEL_PRINTF(display,"%l> pageBegin: %l (%p), pageLength: %l\n",i,pageBegin,pageBegin,pageLength);
                 if(pageLength<paCount) continue;
                 for(; pIndex < pageLength-paCount+1; pIndex++) {
                     char status = PAGE_STATUS_USABLE;
@@ -116,32 +119,11 @@ struct MemoryMap {
                            setPageStatus(j+pIndex+pageBegin, PAGE_STATUS_UNUSABLE);
                         }
                         return (void*)((pageBegin+pIndex)*4096);
-                    } /*else {
-                        KERNEL_PRINTF(display, "%l> Failed at %l\t",pIndex,pi_Index);
-                    }*/
+                    } 
                }
             }
         }
         return NULL;
-    #if 0
-        if(paCount>=pageCount) return NULL;
-        for(size_t i=0; i<pageCount-paCount; ++i) {
-            char status = PAGE_STATUS_USABLE;
-            for(size_t paIndex=0; paIndex<paCount; paIndex++) {
-                if(getPageStatus(i+paIndex)==PAGE_STATUS_UNUSABLE) {
-                   status=PAGE_STATUS_UNUSABLE;
-                   break;
-                }
-            }
-            if(status==PAGE_STATUS_USABLE) {
-                for(size_t j=0; j<paCount; j++) {
-                   setPageStatus(i+j, PAGE_STATUS_UNUSABLE);
-                }
-                return (void*)(i*4096); // convert it to real address
-            }
-        }
-        return NULL;
-    #endif
     }
 };
 inline size_t addressToIndex(void* addr) {
@@ -167,8 +149,6 @@ Pixel limine_memmap_type_to_color(uint64_t type) {
            return Pixel(0x00,0xFF,0x00,0xFF);
         case LIMINE_MEMMAP_RESERVED:
            return Pixel(0x00,0x00,0xFF,0xFF);
-           //return Pixel(0x88,0xFF,0x88,0xFF);   // light green
-
         case LIMINE_MEMMAP_FRAMEBUFFER:
            return Pixel(0x88,0x88,0x88,0xFF);
         case LIMINE_MEMMAP_BAD_MEMORY:
@@ -200,8 +180,12 @@ const char* limine_memmap_type_to_string(uint64_t type) {
    }
 }
 #include "libs/memory.h"
-void printHello() {
-   KERNEL_PRINTF(display, "Hallo Gotten Interrupt!");
+void printHello(int argc) {
+   KERNEL_PRINTF(display, "Hallo Gotten Interrupt %d!\n",argc);
+}
+void keyboard_handler() {
+   KERNEL_PRINTF(display, "Hello from keyboard handler!\n");
+   Kernel::outb(0x20, 0x20);
 }
 extern "C" void kernel() {    
     // NOTE: Maybe if bits are not 32, you could display information another way? Like maybe 
@@ -243,7 +227,7 @@ extern "C" void kernel() {
     }
     #endif
     KERNEL_PB_PRINTF(display, "Loading display information...");
-    volatile bool running=true;
+    bool running=true;
 
 
     KERNEL_LOG(display, "Hello and welcome to BukoOS!\n");
@@ -255,13 +239,10 @@ extern "C" void kernel() {
     size_t AvailableMemory=0;
     int64_t MaxReclaimableIndex=-1;
 
-    //size_t MAxReclaimableSize=0;
     int64_t BiggestUsableIndex=-1;
     size_t  BiggestUsableSize = 0;
 
     KERNEL_PB_PRINTF(display, "Loading memory information...");
-    size_t totalMemory=0;
-    (void)totalMemory;
     for(size_t i = 0; i < limine_memmap_request.response->entry_count; ++i) {
 #ifdef BUKO_PRINT_MEM_INFO
         if(i < 10) KERNEL_PRINTF(display, "%d ", i);
@@ -283,7 +264,6 @@ extern "C" void kernel() {
                         break;
         }
         if(limine_memmap_request.response->entries[i]->type==LIMINE_MEMMAP_USABLE) AvailableMemory+=limine_memmap_request.response->entries[i]->length;
-        //totalMemory+=limine_memmap_request.response->entries[i]->length;
     }
     if(MaxReclaimableIndex==-1) {
         KERNEL_CRASH("Warning: Could not find ANY Bootloader/ACPI reclaimable memory entry");
@@ -291,14 +271,7 @@ extern "C" void kernel() {
     if(BiggestUsableIndex==-1) {
         KERNEL_CRASH("Warning: Could not find ANY Usable memory entry");
     } 
-    //limine_memmap_request.response->entries[MaxReclaimableIndex]
-    
-    //totalMemory = limine_memmap_request.response->entries[limine_memmap_request.response->entry_count-2]->base + limine_memmap_request.response->entries[limine_memmap_request.response->entry_count-2]->length;
 #ifdef BUKO_PRINT_MEM_INFO
-    //KERNEL_PRINTF(display, "Total available memory: %lb %lKib %lMb\n", AvailableMemory, AvailableMemory/1024, AvailableMemory/(1024*1000));
-    //stdTerminal::printf(display, "Base: %l\n",limine_memmap_request.response->entries[limine_memmap_request.response->entry_count-2]->base);
-
-    //KERNEL_PRINTF(display, "All memory: %lb %lKib %lMib %lGib\n",totalMemory, totalMemory/1024, totalMemory/(1024*1000), totalMemory/(1024*1000*1000));
     for(size_t i = 0; i < 9; i++) {
         KERNEL_LOG_COLOR(display,"x", limine_memmap_type_to_color(i)); stdTerminal::printf(display, " - %s\n",limine_memmap_type_to_string(i));
     }
@@ -333,8 +306,6 @@ extern "C" void kernel() {
         if(entry->type != LIMINE_MEMMAP_USABLE) continue;
         size_t entryPageCount = entry->length/4096;
         size_t PageIndex=(entry->base/4096);
-
-            //stdTerminal::printf(display,"Got to usable. Starting at page index: %l, length: %l\n", PageIndex, entryPageCount);
         for(size_t j =((i==(size_t)BiggestUsableIndex) ? GlobalMemoryMap.pageSize : 0); j < entryPageCount; ++j) {
             char* pageSet = &((char*)GlobalMemoryMap.base)[(PageIndex+j)/8];
             *pageSet |= (1 << (PageIndex+j)%8);
@@ -352,7 +323,6 @@ extern "C" void kernel() {
         if(entry->type!=LIMINE_MEMMAP_USABLE) continue;
         size_t PageStart = (entry->base / 4096);
         size_t PageCount = entry->length/4096;
-        //stdTerminal::printf(display, "%l> Starting at %l with %l pages left\n",i,PageStart,PageCount);
         for(size_t j=PageStart+(i==(size_t)BiggestUsableIndex ? GlobalMemoryMap.pageSize : 0); j < PageStart+PageCount; ++j) {
             passed = GlobalMemoryMap.getPageStatus(j)==PAGE_STATUS_USABLE;
             if(!passed) {
@@ -368,78 +338,162 @@ extern "C" void kernel() {
         KERNEL_PRINTF(display,"ERROR: Failed to verify check! at entry %l, page %l\n",(int64_t)failureEntryIndex,(int64_t)failurePageIndex);
     }
 #endif
-#if 0
-    size_t pcount = 30000;
-    void* buf = GlobalMemoryMap.allocate(pcount);
-    KERNEL_PRINTF(display, "Allocated %l pages at %p\n", pcount, buf);
-    KERNEL_PRINTF(display, "Freeing %l pages at %p\n", pcount, buf);
-    GlobalMemoryMap.deallocate(buf, pcount);
-    KERNEL_PRINTF(display,"Allocated %l pages at %p\n", pcount,GlobalMemoryMap.allocate(pcount));
-#endif
-    /*
-    for(size_t y=0; y<display.height-20; ++y) {
-        for(size_t x=0; x<display.width; ++x) {
-           pixels[x] = CONFIG_BACKGROUND_COLOR;
-        }
-        pixels= (Pixel*)((uintptr_t)pixels +  pitch);
-    }
-    
-    for(size_t y=height-20; y<height; ++y) {
-        for (size_t x=0; x<width; ++x) {
-        #ifndef CONFIG_NO_PROGRESSBAR
-            pixels[x] = CONFIG_PROGRESS_BAR_COLOR;
-        #else
-            pixels[x] = CONFIG_BACKGROUND_COLOR;
-        #endif
-        }
-        pixels = (Pixel*)((uintptr_t)pixels +  pitch);
-    }
-    pixels=orgpixels;
-    */
-#if 0
-    size_t count = 78;
-    void* page = GlobalMemoryMap.allocate(count);
-    KERNEL_PRINTF(display, "Allocated %l pages at %p\n",count,page);
-    GlobalMemoryMap.deallocate(page,count);
-    KERNEL_PRINTF(display, "Deallocating at %p\n",page);
-    size_t count2 = 8;
-    void* page2 = GlobalMemoryMap.allocate(count2);
-    KERNEL_PRINTF(display, "Allocated %l pages at %p\n",count2,page2);
-#endif
     asm volatile ("cli");
     KERNEL_PB_PRINTF(display, "Initializing Global descriptor table...");    
-
-    Kernel::GDT gdt;
+    Kernel::GDT* gdt = (Kernel::GDT*)GlobalMemoryMap.allocate(1);
+    *gdt = Kernel::GDT();
 
     Kernel::GDTDescriptor gdt_descriptor;
-
-    KERNEL_PRINTF(display, "gdt? %l\n", &gdt);
-
-    gdt_descriptor.size = sizeof(gdt)-1;
-
-    gdt_descriptor.addr = (uint64_t)&gdt;
-
-    KERNEL_PRINTF(display, "&gdt: %p\n", &gdt);
-
-    KERNEL_PRINTF(display, "gdt_descriptor: %l %d\n", gdt_descriptor.addr,(uint32_t)gdt_descriptor.size);
-
+//    KERNEL_PRINTF(display, "gdt? %p\n", gdt);
+    gdt_descriptor.size = 4096;
+    gdt_descriptor.addr = (uint64_t)gdt;
+#if 0
+    KERNEL_PRINTF(display, "gdt: %p\n", gdt);
+    KERNEL_PRINTF(display, "gdt_descriptor: %p %d\n", gdt_descriptor.addr,(uint32_t)gdt_descriptor.size);
+    KERNEL_PRINTF(display, "gdt->nullDescriptor   : %p\n", gdt->nullDescriptor   );
+    KERNEL_PRINTF(display, "gdt->kernelCodeSegment: %p\n", gdt->kernelCodeSegment);
+    KERNEL_PRINTF(display, "gdt->kernelDataSegment: %p\n", gdt->kernelDataSegment);
+    KERNEL_PRINTF(display, "gdt->syscallsSegment  : %p\n", gdt->syscallsSegment  );
+    KERNEL_PRINTF(display, "gdt->userCodeSegment  : %p\n", gdt->userCodeSegment  );
+    KERNEL_PRINTF(display, "gdt->userDataSegment  : %p\n", gdt->userDataSegment  );
+#endif
     asm volatile ("lgdt %0" : : "m"(gdt_descriptor));
-
-    //asm volatile ("sgdt %0" : : "m"(gdt_descriptor));
-    KERNEL_PRINTF(display, "gdt_descriptor: %l %d\n", gdt_descriptor.addr,(uint32_t)gdt_descriptor.size);
-    while(running) asm volatile("hlt" : "+g"(running));
-    Kernel::IDT idt;
+    Kernel::IDT* idt = (Kernel::IDT*)GlobalMemoryMap.allocate(1);
+    *idt = Kernel::IDT(idt);
     Kernel::IDTDescriptor idt_descriptor;
-    idt_descriptor.size = sizeof(idt)-1;
-    idt_descriptor.addr = (uint64_t)(&idt);
-    idt.Init(0x80, printHello);
-    asm volatile ("lidt %0" : : "m"(idt_descriptor));
+    idt_descriptor.size = 4096;
+    idt_descriptor.addr = (uint64_t)(idt);
+#if 0
+    KERNEL_PRINTF(display, "idt: %p\n",idt);
+    KERNEL_PRINTF(display, "idt_descriptor: %p %d\n", idt_descriptor.addr,(uint32_t)idt_descriptor.size);
+#endif
+    idt->Init(0x80,0xEF00, (void*)printHello);
+    KERNEL_PB_PRINTF(display, "Initializing gdt registers...");
+    kernel_init_gdt_registers();
+    KERNEL_PB_PRINTF(display, "Initialized gdt registers!");
 
+    KERNEL_PB_PRINTF(display, "Loading idt...");
+    asm volatile ("lidt %0" : : "m"(idt_descriptor));
+    KERNEL_PB_PRINTF(display, "Initializing keyboard driver...");
+    idt->Init(0x21, IDT_TYPE_HARDWARE, (void*)keyboard_handler);
+    KERNEL_PB_PRINTF(display, "Enabling PIC and slave PIC");  
+    Kernel::outb(0x20, 0x11);                                 
+    Kernel::outb(0x20, 0x11);                                 
+                                                              
+    Kernel::outb(0x21, 0x20);                                 
+    Kernel::outb(0xA1, 0x28);                                 
+                                                              
+    Kernel::outb(0x21, 0x04);                                 
+    Kernel::outb(0xA1, 0x02);                                 
+                                                             
+    Kernel::outb(0x21, 0x01);                                 
+    Kernel::outb(0xA1, 0x01);                                 
+                                                             
+    Kernel::outb(0x21, 0);                                    
+    Kernel::outb(0xA1, 0);                                    
+
+    //Kernel::outb(0x21, Kernel::inb(0x21) & 0xFD);
+    //Kernel::outb(0x64, 0x60); // Command port
+    //Kernel::outb(0x60, 0xAA); // Data port (0xAA is a typical initialization command)
+    KERNEL_PB_PRINTF(display, "Enabling interrupts...");
     asm volatile ("sti");
-    KERNEL_PB_PRINTF(display, "Done!");
-    KERNEL_RESET_CURSOR();
-    asm volatile ("int $0x80");
-    while(running) {
-        asm volatile("hlt" : "+g"(running));
+
+#if 0
+    KERNEL_PB_PRINTF(display, "Testing interrupts...");
+    {
+      int foo=4;
+      asm volatile ("movq %0, %%rdi" : : "r"((int64_t)foo));
+      asm volatile ("int $0x80");
     }
+    asm volatile ("movq $1, %rdi");
+    asm volatile ("int $0x80");
+    asm volatile ("movq $1, %rdi");
+    asm volatile ("int $0x80");
+#endif
+    KERNEL_PB_PRINTF(display, "Done!");
+    //KERNEL_RESET_CURSOR();
+    running=true;
+    //char _ = Kernel::inb(0x64);   
+    while(running) {
+        continue;
+        char keyboard = Kernel::inb(0x64);
+        if(keyboard&0x01) {
+          char c = Kernel::inb(0x60);
+          int result=0;
+          //KERNEL_PRINTF(display, "%d", (int)c);
+          //continue;
+          if(c!=0) {
+             switch(c) {
+                case QWERTY_US_CHARCODE_A_PRESS: result='A'; break;
+                case QWERTY_US_CHARCODE_B_PRESS: result='B'; break;
+                case QWERTY_US_CHARCODE_C_PRESS: result='C'; break;
+                case QWERTY_US_CHARCODE_D_PRESS: result='D'; break;
+                case QWERTY_US_CHARCODE_E_PRESS: result='E'; break;
+                case QWERTY_US_CHARCODE_F_PRESS: result='F'; break;
+                case QWERTY_US_CHARCODE_G_PRESS: result='G'; break;
+                case QWERTY_US_CHARCODE_H_PRESS: result='H'; break;
+                case QWERTY_US_CHARCODE_I_PRESS: result='I'; break;
+                case QWERTY_US_CHARCODE_J_PRESS: result='J'; break;
+                case QWERTY_US_CHARCODE_K_PRESS: result='K'; break;
+                case QWERTY_US_CHARCODE_L_PRESS: result='L'; break;
+                case QWERTY_US_CHARCODE_M_PRESS: result='M'; break;
+                case QWERTY_US_CHARCODE_N_PRESS: result='N'; break;
+                case QWERTY_US_CHARCODE_O_PRESS: result='O'; break;
+                case QWERTY_US_CHARCODE_P_PRESS: result='P'; break;
+                case QWERTY_US_CHARCODE_Q_PRESS: result='Q'; break;
+                case QWERTY_US_CHARCODE_R_PRESS: result='R'; break;
+                case QWERTY_US_CHARCODE_S_PRESS: result='S'; break;
+                case QWERTY_US_CHARCODE_T_PRESS: result='T'; break;
+                case QWERTY_US_CHARCODE_U_PRESS: result='U'; break;
+                case QWERTY_US_CHARCODE_V_PRESS: result='V'; break;
+                case QWERTY_US_CHARCODE_W_PRESS: result='W'; break;
+                case QWERTY_US_CHARCODE_X_PRESS: result='X'; break;
+                case QWERTY_US_CHARCODE_Y_PRESS: result='Y'; break;
+                case QWERTY_US_CHARCODE_Z_PRESS: result='Z'; break;
+                case QWERTY_US_CHARCODE_1_PRESS: result='1'; break; 
+                case QWERTY_US_CHARCODE_2_PRESS: result='2'; break;
+                case QWERTY_US_CHARCODE_3_PRESS: result='3'; break;
+                case QWERTY_US_CHARCODE_4_PRESS: result='4'; break;
+                case QWERTY_US_CHARCODE_5_PRESS: result='5'; break;
+                case QWERTY_US_CHARCODE_6_PRESS: result='6'; break;
+                case QWERTY_US_CHARCODE_7_PRESS: result='7'; break;
+                case QWERTY_US_CHARCODE_8_PRESS: result='8'; break;
+                case QWERTY_US_CHARCODE_9_PRESS: result='9'; break;
+                case QWERTY_US_CHARCODE_0_PRESS: result='0'; break;
+                case QWERTY_US_LEFT_SHIFT_PRESS: result=BUKO_KEY_LEFT_SHIFT; break;
+                case QWERTY_US_RIGHT_SHIFT_PRESS: result=BUKO_KEY_RIGHT_SHIFT; break;
+                case QWERTY_US_LEFT_CONTR_PRESS: result=BUKO_KEY_LEFT_CONTROL; break;
+                case QWERTY_US_BACKTICK_PRESS  : result=BUKO_KEY_BACKTICK; break;
+                case QWERTY_US_ESCAPE_PRESS    : result=BUKO_KEY_ESCAPE; break;
+                case QWERTY_US_ENTER_PRESS     : result=BUKO_KEY_ENTER; break;
+                case QWERTY_US_BACKSPACE_PRESS : result=BUKO_KEY_BACKSPACE; break;
+                case QWERTY_US_LEFT_ALT_PRESS  : result=BUKO_KEY_LEFT_ALT;   break;
+                case QWERTY_US_SPACE: result=BUKO_KEY_SPACE; break;
+          }
+        }
+        switch(result) {
+        case 0: break;
+        case BUKO_KEY_LEFT_SHIFT: 
+        case BUKO_KEY_LEFT_ALT:
+        case BUKO_KEY_LEFT_CONTROL:
+        case BUKO_KEY_RIGHT_SHIFT:
+        case BUKO_KEY_ENTER:
+            putC(display, '\n');
+        break;
+        case BUKO_KEY_SPACE:
+            putC(display, ' ');
+        break;
+        default: {
+           if(result >= 'A' && result <= 'Z') {
+                putC(display, result);
+           }
+           else if(result >= '0' && result <= '9') {
+                putC(display, result);
+           }
+        } 
+        }
+    }
+    }
+    //asm volatile("hlt" : "+g"(running));
+    KERNEL_PB_PRINTF(display, "Shutting down!");
 }

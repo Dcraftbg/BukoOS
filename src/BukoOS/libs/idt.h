@@ -1,23 +1,25 @@
 #include <stdint.h>
 #include <stddef.h>
+#define IDT_TYPE_EXCEPTION 0x8E00
+#define IDT_TYPE_HARDWARE 0x8F00
+#define IDT_TYPE_SOFTWARE 0xEF00
 namespace Kernel {
-   struct IDTEntry {
-      uint16_t offset_1;        // offset bits 0..15
-      uint16_t selector;        // a code segment selector in GDT or LDT
-      uint8_t  ist;             // bits 0..2 holds Interrupt Stack Table offset, rest of bits zero.
-      uint8_t  type_attributes; // gate type, dpl, and p fields
-      uint16_t offset_2;        // offset bits 16..31
-      uint32_t offset_3;        // offset bits 32..63
-      uint32_t zero;            // reserved
-   } __attribute__((packed));
+    struct IDTEntry {
+		uint16_t	base_low;
+		uint16_t	gdt_descriptor;
+		uint16_t	type;
+		uint16_t	base_middle;
+		uint32_t	base_high;
+		uint32_t	reserved;
+   };
    struct IDTDescriptor {
         uint16_t size;
         uint64_t addr;
    } __attribute__((packed));
    class IDT {
    public:
-       IDTEntry idt[256] = {0};
-       void Init(size_t index, void (*handler)());
-       IDT() {}
+       IDTEntry* idt;
+       void Init(size_t index, int16_t type, void* handler);
+       IDT(void* idt);
    };
 }

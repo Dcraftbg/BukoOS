@@ -1,0 +1,50 @@
+# # megs: 64
+# # romimage: file=BIOS-bochs-latest
+# # vgaromimage: file=VGABIOS-lgpl-latest
+# # boot: cdrom
+# # cdrom: type=cdrom, path=out/bin/OS.iso, status=inserted
+# # cpu: count=1, ips=1000000, model=Corei7, reset_on_triple_fault=1, cpuid_level=10, cpuid_1_ebx=0x756e6547, cpuid_1_ecx=0x6c65746e, cpuid_1_edx=0x49656e69
+# # bochsrc.txt
+# #megs: 64
+# #romimage: file=BIOS-bochs-latest
+# #vgaromimage: file=VGABIOS-lgpl-latest
+# #boot: cdrom
+# #ata0: enabled=1, ioaddr1=0x1f0, ioaddr2=0x3f0, irq=14
+# #ata0-master: type=cdrom, path=out/bin/OS.iso, status=inserted
+# #cpu: count=1, ips=1000000, config_flags=0x8002
+# megs: 64
+# boot: cdrom
+# ata0: enabled=true, ioaddr1=0x1f0, ioaddr2=0x3f0, irq=14
+# ata0-master: type=cdrom, path="out/bin/OS.iso", status=inserted, model="Generic 1234", biosdetect=auto
+# ata0-slave: type=none
+# ata1: enabled=true, ioaddr1=0x170, ioaddr2=0x370, irq=15
+# ata1-master: type=none
+# ata1-slave: type=none
+# ata2: enabled=false
+# ata3: enabled=false
+# optromimage1: file=none
+# optromimage2: file=none
+# optromimage3: file=none
+# optromimage4: file=none
+# optramimage1: file=none
+# optramimage2: file=none
+# optramimage3: file=none
+# optramimage4: file=none
+# pci: enabled=1, chipset=i440fx, slot1=pcivga, slot2=none, slot3=none, slot4=none, slot5=none
+# vga: extension=vbe, update_freq=30, realtime=1, ddc=builtin
+# romimage: file=/home/dcraftbg/vendor/bochs-2.7/bios/bios-bochs-latest
+# vgaromimage: file=/home/dcraftbg/vendor/bochs-2.7/bios/vgabios-lgpl-latest
+# cpu: count=1, ips=4000000, model=corei7_sandy_bridge_2600k, reset_on_triple_fault=1, cpuid_limit_winnt=0, ignore_bad_msrs=1, mwait_is_nop=0
+
+
+
+
+megs: 256
+boot: cdrom
+ata0-master: type=cdrom, path="out/bin/OS.iso", status=inserted, model="Generic 1234", biosdetect=auto
+romimage: file=/home/dcraftbg/vendor/bochs-2.7/bios/BIOS-bochs-latest
+vgaromimage: file=/home/dcraftbg/vendor/bochs-2.7/bios/VGABIOS-lgpl-latest
+cpu: model=bx_generic
+cpuid: vendor_string="GenuineIntel", family=6, model=70, stepping=1
+# Additional settings
+magic_break: enabled=1

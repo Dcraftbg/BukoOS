@@ -1,12 +1,19 @@
 #include "idt.h"
-void Kernel::IDT::Init(size_t index, void (*handler)()) {
-    uint64_t handler_address = (uint64_t)handler;
-    idt[index].offset_1 = handler_address & 0xFFFF;
-    idt[index].selector = 0x08;  // Assuming your code segment selector is 0x08 (kernel code segment)
-    idt[index].ist = 0;
-    idt[index].type_attributes = 0x8E; // 0x8E is an interrupt gate with privilege level 0
-    idt[index].offset_2 = (handler_address >> 16) & 0xFFFF;
-    idt[index].offset_3 = (handler_address >> 32) & 0xFFFFFFFF;
-    idt[index].zero = 0;
+#include "gdt.h"
+static volatile void idt_default_handler() {
+   (void)idt_default_handler;
+}
+Kernel::IDT::IDT(void* idt) {
+   this->idt=(Kernel::IDTEntry*)idt;
+   for(size_t i=0; i<256; ++i) {
+        Init(i, 0xEF00, (void*)idt_default_handler);
+   }
+}
+void Kernel::IDT::Init(size_t index, int16_t type, void* handler) {
+	idt[index].type = type;
+	idt[index].gdt_descriptor = sizeof( ( ( struct Kernel::GDT*) 0 ) -> kernelCodeSegment);
+	idt[index].base_low = (uint16_t)(uint64_t) handler;
+	idt[index].base_middle = (uint64_t) handler >> 16;
+	idt[index].base_high = (uint64_t) handler >> 32;
 }
 

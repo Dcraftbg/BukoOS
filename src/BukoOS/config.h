@@ -34,8 +34,8 @@
 
 // Developers Choice :D
 #if 1
-#define BUKO_PRINT_MEM_INFO
-#define BUKO_TEST_MEMORY_PAGE_MAP
+//#define BUKO_PRINT_MEM_INFO
+//#define BUKO_TEST_MEMORY_PAGE_MAP
 #define COLORSCHEME_TOKYONIGHT
 #endif
 //#define BUKO_SERVER_BUILD

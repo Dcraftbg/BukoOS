@@ -42,28 +42,13 @@
                      SEG_LONG(0)     | SEG_SIZE(1) | SEG_GRAN(1) | \
                      SEG_PRIV(3)     | SEG_DATA_RDWR
 */
+extern "C" void kernel_init_gdt_registers();
 namespace Kernel {
-
-#if 0
-   class GDTEntry {
-   private:
-        char m_rawEntry[8];
-   public:
-        GDTEntry(uint32_t base, uint32_t limit, uint8_t access_byte, uint8_t flags);
-        inline char* getRaw() { return m_rawEntry; }
+   struct TSSSegment { 
+           // TODO: Add this for when I need to do tss stuff.
+        uint64_t mistery1; 
+        uint64_t mistery2; 
    };
-#endif
-   class GDTEntry {
-   private:
-        uint16_t limit_1;
-        uint16_t base_1;
-        uint8_t base_2;
-        uint8_t access;
-        uint16_t flags_and_limit;
-        uint8_t base_3;
-   public:
-        GDTEntry(uint32_t base, uint32_t limit, uint8_t access_byte, uint8_t flags);
-   } __attribute__((packed));
    struct GDTDescriptor {
         uint16_t size;
         uint64_t addr;
@@ -71,11 +56,14 @@ namespace Kernel {
    // Singleton GDT
    class GDT {
    public:
-        GDTEntry nullDescriptor;
-        GDTEntry kernelCodeSegment;
-        GDTEntry kernelDataSegment;
-        //0x00400000
-        GDT() : nullDescriptor(0,0,0,0), kernelCodeSegment(0,0x003FFFFF, 0x9A, 0xCF), kernelDataSegment(0x00800000, 0x003FFFFF, 0x92, 0xC){}
+        uint64_t nullDescriptor;
+        uint64_t kernelCodeSegment;
+        uint64_t kernelDataSegment;
+        uint64_t syscallsSegment;
+        uint64_t userCodeSegment;
+        uint64_t userDataSegment;
+        TSSSegment tssMap[4];
+        GDT() : nullDescriptor(0), kernelCodeSegment(0x0020990000000000), kernelDataSegment(0x0020930000000000), syscallsSegment(0), userCodeSegment(0x0020F30000000000), userDataSegment(0x0020F90000000000) {}
    };
 
 };
