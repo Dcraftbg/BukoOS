@@ -57,6 +57,37 @@ size_t stdString::itostr(char* result, size_t maxsize, int64_t a) {
 }  
 char HexDigits[] = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
 #include "terminal.h"
+void stdString::itohex(char* result, int64_t maxsize, uint64_t a) {
+  int64_t digits = 0;
+  auto n = a;
+  do {
+    digits++;
+    n/=16;
+  } while(n>0);
+  if (digits > maxsize) digits=maxsize;
+  while (digits > 0) {
+    result[digits-1]    = HexDigits[a&0xF];
+    if(digits>1) result[digits-2]  = HexDigits[(a&0xF0)>>4];
+    digits-=2;
+    a>>=8;
+  } 
+} 
+void stdString::itohex(char* result, int64_t maxsize, uint32_t a) {
+  int64_t digits = 0;
+  auto n = a;
+  do {
+    digits++;
+    n/=16;
+  } while(n>0);
+  if (digits > maxsize) digits=maxsize;
+  while (digits > 0) {
+    result[digits-1]    = HexDigits[a&0xF];
+    if(digits>1) result[digits-2]  = HexDigits[(a&0xF0)>>4];
+    digits-=2;
+    a>>=8;
+  } 
+} 
+
 void stdString::itohex(char* result, int64_t maxsize, int a) {
   #if 1
   int64_t digits = 0;

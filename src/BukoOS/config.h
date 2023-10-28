@@ -2,6 +2,7 @@
 
 // Configure your startup BukoOS here! 
 // Just define the right macros and you are good to go!
+// BUKO_SERVER_BUILD   - build WITHOUT DisplayInfo
 // BUKO_PRINT_MEM_INFO - prints memory info on bootup
 // BUKO_TEST_MEMORY_PAGE_MAP - (Recommended for debugging) tests if memory page map is mapped correctly
 // CONFIG_NO_PROGRESSBAR     - Remove the progress bar
@@ -32,13 +33,12 @@
 
 
 // Developers Choice :D
-#if 0
-#define BUKO_PRINT_MEM_INFO
-#define BUKO_TEST_MEMORY_PAGE_MAP
+#if 1
+//#define BUKO_PRINT_MEM_INFO
+//#define BUKO_TEST_MEMORY_PAGE_MAP
 #define COLORSCHEME_TOKYONIGHT
 #endif
-
-
+//#define BUKO_SERVER_BUILD
 #ifdef COLORSCHEME_NONE
 #elif defined(COLORSCHEME_DARKMODE)
 #define CONFIG_PROGRESS_BAR_COLOR Pixel(34,34,34,0xFF)

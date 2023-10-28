@@ -7,4 +7,6 @@ namespace stdString {
         size_t itostr(char* result, size_t maxsize, int64_t a); 
         void   itohex(char* result, int64_t maxsize, int32_t a);
         void   itohex(char* result, int64_t maxsize, int64_t a);
+        void   itohex(char* result, int64_t maxsize, uint64_t a);
+        void   itohex(char* result, int64_t maxsize, uint32_t a);
 };

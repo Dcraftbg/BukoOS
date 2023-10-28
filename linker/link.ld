@@ -33,4 +33,8 @@ SECTIONS
         *(.bss .bss.*)
         *(COMMON)
     } :data
+   /DISCARD/ : {
+    *(.note.gnu.property)
+    *(.note.gnu.build-id)
+   }
 }
