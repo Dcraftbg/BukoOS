@@ -45,5 +45,20 @@
 #define BUKO_KEY_8 '8'
 #define BUKO_KEY_9 '9'
 #define BUKO_KEY_0 '0'
+#define BUKO_KEY_DOT '.'
+#define BUKO_KEY_COMA ','
+#define BUKO_KEY_SINGLE_QUOTE '\''
+#define BUKO_KEY_SEMICOLON ';'
+#define BUKO_KEY_OPEN_SQUARE '['
+#define BUKO_KEY_CLOSE_SQUARE ']'
+#define BUKO_KEY_EQUALS '='
+#define BUKO_KEY_MINUS '-'
+#define BUKO_KEY_BACKSLASH '\\'
 #define BUKO_KEY_BACKTICK '`'
+
+typedef enum {
+  BUKO_KEYBOARD_ACTION_RELEASE=0,
+  BUKO_KEYBOARD_ACTION_PRESS=1,
+  BUKO_KEYBOARD_ACTION_HOLD=2,
+} BukoKeyboardAction;
 

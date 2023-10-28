@@ -7,6 +7,6 @@ inline uint8_t inb(uint16_t port) {
    return ret; 
 }
 inline void outb(uint16_t port, uint8_t data) {
-   asm volatile("outb %0, %1" : "=a"(data) : "d"(port)); 
+   asm volatile("outb %1, %0" : : "d"(port), "a"(data)); 
 }
 }; // Kernel

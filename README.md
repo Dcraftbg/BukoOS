@@ -19,7 +19,7 @@ Honorable mention to:
 **Quickinstall**:
 ```cmd
 > cd install/windows
-> ./basicInstall.bat                    # Installs Ubuntu WSL and all of the things we need
+> basicInstall.bat                    # Installs Ubuntu WSL and all of the things we need
 ```
 **Build**:
 ```cmd
@@ -30,11 +30,11 @@ Honorable mention to:
 ```
 ## Linux
 ```sh
-> sudo apt install xorriso && sudo apt install g++
+> sudo apt install xorriso && sudo apt install g++  # apt install or use your local package manager if you're not on Ubuntu
 > make init
 > make dist
 > make run_qemu                         # Optionally run the OS directly in qemu
 ```
 ## MacOS
-- Haven't tested it yet :|
+- Haven't tested it yet, but should hopefully work :|
 

@@ -6,8 +6,9 @@ QEMU=qemu-system-x86_64
 # NOTE: Original one is qemu-system-x86_64
 LINKER:=ld
 NASM_SOURCE_FILES:=$(wildcard src/BukoOS/libs/*.nasm)
-SOURCE_FILES:=$(wildcard src/BukoOS/**.c src/BukoOS/**.cpp) $(wildcard src/BukoOS/libs/*.cpp)
-CC_FLAGS:=-nostdlib -march=x86-64 -ffreestanding -static -Wall -Wno-reorder -fomit-frame-pointer -fno-builtin -fno-stack-protector -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -mno-3dnow 
+SOURCE_FILES:=$(wildcard src/BukoOS/**.c src/BukoOS/**.cpp) $(wildcard src/BukoOS/libs/*.cpp) $(wildcard src/BukoOS/drivers/*.cpp)
+
+CC_FLAGS:=-nostdlib -march=x86-64 -ffreestanding -static -Wall -Wno-reorder -fomit-frame-pointer -fno-builtin -fno-stack-protector -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -mno-3dnow -I src/BukoOS 
 OBJDIR:=out/int
 OBJDEST:=out/int/kernel
 INCLUDES:=vendor/limine

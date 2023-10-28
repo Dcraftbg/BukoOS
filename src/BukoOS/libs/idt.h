@@ -1,3 +1,4 @@
+#pragma once
 #include <stdint.h>
 #include <stddef.h>
 #define IDT_TYPE_EXCEPTION 0x8E00
