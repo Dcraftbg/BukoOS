@@ -18,7 +18,7 @@
 
 
 #define SYS_DIST_URL "https://github.com/Dcraftbg/BukoOS"
-#define SYS_VERSION "0.3.1A"
+#define SYS_VERSION "0.4.0A"
 #ifdef BUKO_DEBUG
    #define SYS_MODE "Debug"
 #elif defined(BUKO_RELEASE)
