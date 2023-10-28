@@ -63,6 +63,7 @@ debug:   compile_debug build_iso
 release: compile_release build_iso
 dist:    compile_dist build_iso 
 init:
+	$(LINUX_ENV) git submodule update --init
 	$(LINUX_ENV) mkdir -p out
 	$(LINUX_ENV) mkdir -p out/bin
 	$(LINUX_ENV) mkdir -p out/int
