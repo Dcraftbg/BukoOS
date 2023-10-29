@@ -7,7 +7,12 @@ QEMU=qemu-system-x86_64
 LINKER:=ld
 NASM_SOURCE_FILES:=$(wildcard src/BukoOS/libs/*.nasm)
 SOURCE_FILES:=$(wildcard src/BukoOS/**.c src/BukoOS/**.cpp) $(wildcard src/BukoOS/libs/*.cpp) $(wildcard src/BukoOS/drivers/*.cpp)
-
+VIRTUAL_IMAGE_PATH:=virtual/res/ssd_img.qcow2 
+ifeq ("$(wildcard $(PATH_TO_FILE))","")
+QEMU_FLAGS:=-boot d -device virtio-scsi-pci 
+else 
+QEMU_FLAGS:=-hda $(VIRTUAL_IMAGE_PATH) -boot d -device virtio-scsi-pci 
+endif
 CC_FLAGS:=-nostdlib -march=x86-64 -ffreestanding -static -Wall -Wno-reorder -fomit-frame-pointer -fno-builtin -fno-stack-protector -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -mno-3dnow -I src/BukoOS 
 OBJDIR:=out/int
 OBJDEST:=out/int/kernel
@@ -43,9 +48,9 @@ build_iso:
 	$(LINUX_ENV) cp vendor/limine/limine-bios.sys vendor/limine/limine-bios-cd.bin $(LIMINECFG) vendor/limine/limine-uefi-cd.bin $(OBJDEST) out/bin/
 	$(LINUX_ENV) xorriso -as mkisofs -b limine-bios-cd.bin -no-emul-boot -boot-load-size 4 -boot-info-table --efi-boot limine-uefi-cd.bin -efi-boot-part --efi-boot-image $(OBJDEST) out/bin -o out/bin/OS.iso
 run_qemu:
-	$(QEMU) -cpu max -smp 2 -m 128 -cdrom out/bin/OS.iso
+	$(QEMU) $(QEMU_FLAGS) -cpu max -smp 2 -m 128 -cdrom out/bin/OS.iso
 debugger_qemu_testing:
-	$(QEMU) -S -s -cpu max -smp 2 -m 128 -cdrom out/bin/OS.iso
+	$(QEMU) $(QEMU_FLAGS) -S -s -cpu max -smp 2 -m 128 -cdrom out/bin/OS.iso
 	#$(QEMU) -kernel out/bin/OS.iso -cpu max -smp 2 -m 128 -cdrom out/bin/OS.iso -S -s 
 debugger_bochs_testing:
 	bochsdbg -f wintest.bxrc -q 
@@ -68,5 +73,7 @@ init:
 	$(LINUX_ENV) mkdir -p out/bin
 	$(LINUX_ENV) mkdir -p out/int
 	$(LINUX_ENV) mkdir -p backups
-
-
+init_qemu:
+	$(LINUX_ENV) mkdir -p virtual
+	$(LINUX_ENV) mkdir -p virtual/res
+	$(LINUX_ENV) qemu-img create -f qcow virtual/res/ssd_img.qcow2 10G

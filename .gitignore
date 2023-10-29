@@ -1,2 +1,4 @@
 backups/
 out/
+qemu_specs.txt
+virtual/

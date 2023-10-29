@@ -8,7 +8,6 @@ void Driver::keyboard() {
     if(i==3) return;
     char c = Kernel::inb(0x60);
     int result=0;
-    static bool shifted=false;
 
     BukoKeyboardAction actionType=BUKO_KEYBOARD_ACTION_PRESS;
     if(c!=0) {
@@ -58,7 +57,7 @@ void Driver::keyboard() {
        case QWERTY_US_BACKSPACE_PRESS  : result=BUKO_KEY_BACKSPACE;   break;
        case QWERTY_US_LEFT_ALT_PRESS   : result=BUKO_KEY_LEFT_ALT;    break;
        case QWERTY_US_SPACE_PRESS      : result=BUKO_KEY_SPACE;       break;
-
+       
        case QWERTY_US_DOT_PRESS        : result=BUKO_KEY_DOT         ; break;
        case QWERTY_US_COMA_PRESS       : result=BUKO_KEY_COMA        ; break;
        case QWERTY_US_SINGLE_QUOTE_PRESS:result=BUKO_KEY_SINGLE_QUOTE; break;
@@ -123,6 +122,9 @@ void Driver::keyboard() {
        case QWERTY_US_BACKSLASH_RELEASE   : result=BUKO_KEY_BACKSLASH   ; actionType=BUKO_KEYBOARD_ACTION_RELEASE;break;
        }
    }
+   keyboard_handler(actionType, result);
+   Kernel::outb(0x20, 0x20);
+#if 0
    switch(result) {
         case 0: break;
         case BUKO_KEY_LEFT_SHIFT:
@@ -163,5 +165,5 @@ void Driver::keyboard() {
            }
         } 
    }
-   Kernel::outb(0x20, 0x20);
+#endif
 }

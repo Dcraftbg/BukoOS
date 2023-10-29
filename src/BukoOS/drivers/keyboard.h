@@ -10,6 +10,7 @@
 #include <libs/memory.h>
 #include <libs/string.h>
 #include <config.h>
+void keyboard_handler(BukoKeyboardAction actionType, int key); 
 #ifndef BUKO_SERVER_BUILD
 extern DisplayInfo display;
 #endif

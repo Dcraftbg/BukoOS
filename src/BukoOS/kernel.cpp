@@ -13,12 +13,13 @@
 #include "libs/memmap.h"
 #include "libs/string.h"
 #include "libs/kernelUtils.h"
+#include "libs/PCI.h"
 #include "drivers/keyboard.h"
 #include "config.h"
 
 
 #define SYS_DIST_URL "https://github.com/Dcraftbg/BukoOS"
-#define SYS_VERSION "0.4.0A"
+#define SYS_VERSION "0.4.1A"
 #ifdef BUKO_DEBUG
    #define SYS_MODE "Debug"
 #elif defined(BUKO_RELEASE)
@@ -45,8 +46,55 @@ void mouse_handler() {
    Kernel::outb(0x20, 0x20);
 }
 #endif
+//char cmdBuffer[4096]={0};
+//size_t cmdLen=0;
+void keyboard_handler(BukoKeyboardAction actionType, int key) {
+   static bool shifted=false;
+   switch(key) {
+        case 0: break;
+        case BUKO_KEY_LEFT_SHIFT:
+        case BUKO_KEY_RIGHT_SHIFT:
+             shifted=actionType!=BUKO_KEYBOARD_ACTION_RELEASE;
+        break;
+        case BUKO_KEY_LEFT_ALT:
+        case BUKO_KEY_LEFT_CONTROL:
+        break;
+        case BUKO_KEY_ENTER:
+            if(actionType) putC(display, '\n');
+        break;
+        case BUKO_KEY_SPACE:
+            if(actionType) putC(display, ' ');
+        break;
+        case BUKO_KEY_COMA:
+            if(actionType) {if(shifted) putC(display, '<'); else putC(display, ',');} break;
+        case BUKO_KEY_DOT:
+            if(actionType) {if(shifted) putC(display, '>'); else putC(display, '.');} break;
+        case BUKO_KEY_SINGLE_QUOTE:
+            if(actionType) {if(shifted) putC(display, '"'); else putC(display, '\'');} break;
+        case BUKO_KEY_SEMICOLON:
+            if(actionType) {if(shifted) putC(display, ':'); else putC(display, ';');} break;
+        case BUKO_KEY_OPEN_SQUARE:
+            if(actionType) {if(shifted) putC(display, '{'); else putC(display, '[');} break;
+        case BUKO_KEY_CLOSE_SQUARE:
+            if(actionType) {if(shifted) putC(display, '}'); else putC(display, ']');} break;
+        case BUKO_KEY_MINUS:
+            if(actionType) {if(shifted) putC(display, '_'); else putC(display, '-');} break;
+        case BUKO_KEY_EQUALS:
+            if(actionType) {if(shifted) putC(display, '+'); else putC(display, '=');} break;
+        default: {
+           if(key >= 'A' && key <= 'Z' && actionType!=BUKO_KEYBOARD_ACTION_RELEASE) {
+                putC(display, shifted ? key : key-'A'+'a');
+           }
+           else if(key >= '0' && key <= '9' && actionType!=BUKO_KEYBOARD_ACTION_RELEASE) {
+                putC(display, key);
+           }
+        } 
+   }
 
-extern "C" void kernel() {    
+}
+extern "C" void kernel() {   
+
+    static bool running=true;
     // NOTE: Maybe if bits are not 32, you could display information another way? Like maybe 
     // Emergency Cchar display. Like you can display only raw colors. Explaining that the OS requires the full
     // 32 bit display in order to run correctly (as a Workspace)
@@ -85,7 +133,6 @@ extern "C" void kernel() {
     }
     #endif
     KERNEL_PB_PRINTF(display, "Loading display information...");
-    bool running=true;
 
 
     KERNEL_LOG(display, "Hello and welcome to BukoOS!\n");
@@ -213,12 +260,32 @@ extern "C" void kernel() {
 
 
     Kernel::outb(0x21, 0b11111101); // Disable all master PIC hardware interrupts, except keyboard
-    Kernel::outb(0xA1, 0b11111111); // Disable all slave PIC hardware interrupts, except mouse
+    Kernel::outb(0xA1, 0b11111111); // Disable all slave PIC hardware interrupts
+    // ------------------Done configuring PIC------------------
+    //size_t foundDevices=0;
+    for(uint8_t bus=0; bus<255; ++bus) {
+        for(uint8_t slot=0; slot<32; ++slot) {
+            uint16_t vendor_id = pci_config_read_word(bus, slot, 0, 0);
+            if(vendor_id!=0xFFFF) {
+                uint16_t device = pci_config_read_word(bus, slot, 0, 2);
+                KERNEL_PRINTF(display,"[PCI] Found device with vendor: %p device: %p\n",(int64_t)vendor_id, (int64_t)device);
+                //if(foundDevices % 3 == 0) putC(display, '\n');
+                //foundDevices++;
+            }
+        }
+#if 0
+        for(uint8_t device=0; device<32; ++device) {
+            for(uint8_t function=0; function<8; ++function) {
+
+            }
+        }
+#endif
+    } 
+    // ---------------Done configuring PCI---------------
 
     KERNEL_PB_PRINTF(display, "Enabling interrupts...");
     asm volatile ("sti");
     KERNEL_PB_PRINTF(display, "Done!");
-    running=true;
     while(running) {
         asm volatile("hlt" : "+g"(running));
         continue;
