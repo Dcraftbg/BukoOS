@@ -7,11 +7,11 @@ QEMU=qemu-system-x86_64
 LINKER:=ld
 NASM_SOURCE_FILES:=$(wildcard src/BukoOS/libs/*.nasm)
 SOURCE_FILES:=$(wildcard src/BukoOS/**.c src/BukoOS/**.cpp) $(wildcard src/BukoOS/libs/*.cpp) $(wildcard src/BukoOS/drivers/*.cpp)
-VIRTUAL_IMAGE_PATH:=virtual/res/ssd_img.qcow2 
-ifeq ("$(wildcard $(PATH_TO_FILE))","")
-QEMU_FLAGS:=-boot d -device virtio-scsi-pci 
+VIRTUAL_IMAGE_PATH:=virtual/res/ssd.img 
+ifeq ("$(wildcard $(VIRTUAL_IMAGE_PATH))","")
+QEMU_FLAGS:=-boot d -drive $(VIRTUAL_IMAGE_PATH),id=nvm -device nvme,serial=deadbeef,drive=nvm
 else 
-QEMU_FLAGS:=-hda $(VIRTUAL_IMAGE_PATH) -boot d -device virtio-scsi-pci 
+QEMU_FLAGS:=-boot d -device nvme,serial=deadbeef
 endif
 CC_FLAGS:=-nostdlib -march=x86-64 -ffreestanding -static -Wall -Wno-reorder -fomit-frame-pointer -fno-builtin -fno-stack-protector -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -mno-3dnow -I src/BukoOS 
 OBJDIR:=out/int
@@ -76,4 +76,4 @@ init:
 init_qemu:
 	$(LINUX_ENV) mkdir -p virtual
 	$(LINUX_ENV) mkdir -p virtual/res
-	$(LINUX_ENV) qemu-img create -f qcow virtual/res/ssd_img.qcow2 10G
+	$(LINUX_ENV) qemu-img create -f raw $(VIRTUAL_IMAGE_PATH) 10G

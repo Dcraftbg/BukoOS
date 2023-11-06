@@ -19,7 +19,7 @@
 
 
 #define SYS_DIST_URL "https://github.com/Dcraftbg/BukoOS"
-#define SYS_VERSION "0.4.1A"
+#define SYS_VERSION "0.4.2A"
 #ifdef BUKO_DEBUG
    #define SYS_MODE "Debug"
 #elif defined(BUKO_RELEASE)
@@ -48,6 +48,98 @@ void mouse_handler() {
 #endif
 //char cmdBuffer[4096]={0};
 //size_t cmdLen=0;
+
+struct RealTime_T {
+  int8_t second;
+  int8_t minute;
+  int8_t hour;
+
+  int8_t weekday;
+  int8_t monthday;
+  int8_t month;
+  int8_t year;
+  int8_t century;
+};
+inline uint64_t getFullYearFromTime(RealTime_T& time) {
+   uint64_t full_year=time.century*100+time.year;
+   return full_year;
+}
+inline int8_t getCMOSregister(int8_t reg) {
+  Kernel::outb(0x70, (1 << 7) | (reg)); // 1 << 7 to disable NMI... Maybe I could make it into its own function
+  return Kernel::inb(0x71);
+}
+#define BCD_TO_BINARY(bcd) (((bcd & 0xF0) >> 1) + ((bcd & 0xF0) >> 3) + (bcd & 0xf))
+
+#define CMOS_CONFIG_24_HOUR_CLOCK 2
+#define CMOS_CONFIG_BINARY 4
+uint8_t CMOSConfig=0; 
+inline uint8_t getHourNormal(uint8_t hour) {
+  if(!(CMOSConfig & CMOS_CONFIG_24_HOUR_CLOCK) && (hour & 0x80)) {
+     hour = ((hour & 0x7F)+12)%24;
+  }
+  //if (hour & 0x80) {
+  //   KERNEL_PRINTF(display, "Enabled AM/PM and hour is PM mode!\n");
+  //}
+  return hour;
+}
+inline void initCMOSConfig() {
+  uint8_t statB = getCMOSregister(0x0B);
+  CMOSConfig = statB; // TODO: Not sure if this works perfectly fine all the time bu yes
+}
+inline uint8_t CMOS_update_in_progress() {
+   Kernel::outb(0x70, 0x0A);
+   return (Kernel::inb(0x71) & 0x80);
+}
+inline bool RealTime_T_eq(RealTime_T& current, RealTime_T& other) {
+  return current.second== other.second && current.minute == other.minute &&
+         current.hour  == other.hour   && current.weekday == other.weekday &&
+         current.monthday == other.monthday && current.monthday == other.monthday &&
+         current.month == other.month && current.year == other.year &&
+         current.century == other.century;
+}
+RealTime_T* timeFromCMOS(RealTime_T* last) {
+  RealTime_T currentTime={0};
+  currentTime.second  =last->second  ; 
+  currentTime.minute  =last->minute  ; 
+  currentTime.hour    =last->hour    ; 
+  currentTime.weekday =last->weekday ; 
+  currentTime.monthday=last->monthday; 
+  currentTime.month   =last->month   ; 
+  currentTime.year    =last->year    ; 
+  currentTime.century =last->century ; 
+  do { 
+        last->second  =currentTime.second  ; 
+        last->minute  =currentTime.minute  ; 
+        last->hour    =currentTime.hour    ; 
+        last->weekday =currentTime.weekday ; 
+        last->monthday=currentTime.monthday; 
+        last->month   =currentTime.month   ; 
+        last->year    =currentTime.year    ; 
+        last->century =currentTime.century ;
+        while(CMOS_update_in_progress());
+        currentTime.second   = getCMOSregister(0x00);
+        currentTime.minute   = getCMOSregister(0x02);
+        currentTime.hour     = getCMOSregister(0x04);
+        currentTime.weekday  = getCMOSregister(0x06);
+        currentTime.monthday = getCMOSregister(0x07);
+        currentTime.month    = getCMOSregister(0x08);
+        currentTime.year     = getCMOSregister(0x09);
+        currentTime.century  = getCMOSregister(0x32);
+  } while(!RealTime_T_eq(currentTime,*last));
+  //initCMOSConfig();
+  if(!(CMOSConfig & CMOS_CONFIG_BINARY)) {
+     last->second   = BCD_TO_BINARY(last->second  ); 
+     last->minute   = BCD_TO_BINARY(last->minute  ); 
+     last->hour     = BCD_TO_BINARY(last->hour    ); 
+     last->weekday  = BCD_TO_BINARY(last->weekday ); 
+     last->monthday = BCD_TO_BINARY(last->monthday); 
+     last->month    = BCD_TO_BINARY(last->month   ); 
+     last->year     = BCD_TO_BINARY(last->year    ); 
+     last->century  = BCD_TO_BINARY(last->century ); 
+  }
+  last->hour = getHourNormal(last->hour);
+  return last;
+}
 void keyboard_handler(BukoKeyboardAction actionType, int key) {
    static bool shifted=false;
    switch(key) {
@@ -56,7 +148,7 @@ void keyboard_handler(BukoKeyboardAction actionType, int key) {
         case BUKO_KEY_RIGHT_SHIFT:
              shifted=actionType!=BUKO_KEYBOARD_ACTION_RELEASE;
         break;
-        case BUKO_KEY_LEFT_ALT:
+        case BUKO_KEY_LEFT_ALT: 
         case BUKO_KEY_LEFT_CONTROL:
         break;
         case BUKO_KEY_ENTER:
@@ -259,30 +351,55 @@ extern "C" void kernel() {
     Kernel::outb(0xA1, 0); // Initializing PIC
 
 
-    Kernel::outb(0x21, 0b11111101); // Disable all master PIC hardware interrupts, except keyboard
+    Kernel::outb(0x21, 0b11111111); // Disable all master PIC hardware interrupts, except keyboard
     Kernel::outb(0xA1, 0b11111111); // Disable all slave PIC hardware interrupts
     // ------------------Done configuring PIC------------------
     //size_t foundDevices=0;
+    // ------------------Printing vendor IDs------------------
     for(uint8_t bus=0; bus<255; ++bus) {
         for(uint8_t slot=0; slot<32; ++slot) {
             uint16_t vendor_id = pci_config_read_word(bus, slot, 0, 0);
             if(vendor_id!=0xFFFF) {
                 uint16_t device = pci_config_read_word(bus, slot, 0, 2);
-                KERNEL_PRINTF(display,"[PCI] Found device with vendor: %p device: %p\n",(int64_t)vendor_id, (int64_t)device);
+                uint32_t class_code     = pci_config_read_dword(bus, slot, 0, 8);
+                uint8_t  base_class     = (class_code >> 24) & 0xFF;
+                uint8_t  subclass       = (class_code >> 16) & 0xFF;
+                uint8_t  prog_interface = (class_code>>8) & 0xFF;
+                uint8_t  revision_ID    = (class_code) & 0xFF;
+                (void)prog_interface;
+                (void)revision_ID;
+                KERNEL_PRINTF(display,"[PCI] Found device with vendor: %p device: %p class: %d subclass: %d\n",(int64_t)vendor_id, (int64_t)device,(int32_t)base_class, (int32_t)subclass);
                 //if(foundDevices % 3 == 0) putC(display, '\n');
                 //foundDevices++;
             }
         }
-#if 0
-        for(uint8_t device=0; device<32; ++device) {
-            for(uint8_t function=0; function<8; ++function) {
-
-            }
-        }
-#endif
     } 
     // ---------------Done configuring PCI---------------
+    
 
+    // --------------Getting date and time----------------
+    initCMOSConfig();
+    RealTime_T time={0}; 
+    timeFromCMOS(&time);
+    //KERNEL_PRINTF(display,"year: %d\n"    ,(int)getFullYearFromTime(time));
+    //KERNEL_PRINTF(display,"month: %d\n"   ,(int)time.month);
+    //KERNEL_PRINTF(display,"day: %d\n"     ,(int)time.monthday);
+    //KERNEL_PRINTF(display,"weekday:  %d\n",(int)time.weekday);
+    //KERNEL_PRINTF(display,"hour: %d\n"    ,(int)time.hour);
+    //KERNEL_PRINTF(display,"minute: %d\n"  ,(int)time.minute);
+    //KERNEL_PRINTF(display,"second: %d\n"  ,(int)time.second);
+    //KERNEL_PRINTF(display,"CMOS Config state (B): %d\n",(int)CMOSConfig);
+    //KERNEL_PRINTF(display,"CMOS is configured to use %s and %s\n",CMOSConfig & CMOS_CONFIG_24_HOUR_CLOCK ? "standard time": "am/pm", CMOSConfig & CMOS_CONFIG_BINARY ? "binary mode" : "bsd mode");
+    {
+      char minbuf[3]={0};
+
+      stdString::itostr(minbuf, 2, time.minute);
+      if(time.minute < 10) {
+        minbuf[1]=minbuf[0];
+        minbuf[0]='0';
+      }
+      KERNEL_PRINTF(display,"%d:%s: %d/%d/%d",(int)time.hour,minbuf, (int)time.monthday,(int)time.month, (int)getFullYearFromTime(time));
+    }
     KERNEL_PB_PRINTF(display, "Enabling interrupts...");
     asm volatile ("sti");
     KERNEL_PB_PRINTF(display, "Done!");
