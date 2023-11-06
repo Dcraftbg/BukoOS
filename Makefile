@@ -7,9 +7,9 @@ QEMU=qemu-system-x86_64
 LINKER:=ld
 NASM_SOURCE_FILES:=$(wildcard src/BukoOS/libs/*.nasm)
 SOURCE_FILES:=$(wildcard src/BukoOS/**.c src/BukoOS/**.cpp) $(wildcard src/BukoOS/libs/*.cpp) $(wildcard src/BukoOS/drivers/*.cpp)
-VIRTUAL_IMAGE_PATH:=virtual/res/ssd.img 
-ifeq ("$(wildcard $(VIRTUAL_IMAGE_PATH))","")
-QEMU_FLAGS:=-boot d -drive $(VIRTUAL_IMAGE_PATH),id=nvm -device nvme,serial=deadbeef,drive=nvm
+VIRTUAL_IMAGE_PATH:=virtual/res/ssd.img
+ifneq ("$(wildcard $(VIRTUAL_IMAGE_PATH))","")
+QEMU_FLAGS:=-boot d -drive file=$(VIRTUAL_IMAGE_PATH),format=raw,id=drive0 -device nvme,serial=deadbeef
 else 
 QEMU_FLAGS:=-boot d -device nvme,serial=deadbeef
 endif

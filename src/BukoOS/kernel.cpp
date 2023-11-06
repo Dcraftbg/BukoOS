@@ -30,6 +30,13 @@
    #error "Running in non recognized mode! Please run with BUKO_DEBUG, BUKO_RELEASE or BUKO_DIST"
 #endif
 #define MEMORY_DISPLAY_SIZE (112.0/2.0)
+
+
+
+
+#define BUKO_DEVICE_NVM_CODE 0x108
+
+
 // note: only returned by getPageStatus if the index is out of range^
 static volatile limine_framebuffer_request limine_framebuffer_request = {
     .id = LIMINE_FRAMEBUFFER_REQUEST,
@@ -360,15 +367,64 @@ extern "C" void kernel() {
         for(uint8_t slot=0; slot<32; ++slot) {
             uint16_t vendor_id = pci_config_read_word(bus, slot, 0, 0);
             if(vendor_id!=0xFFFF) {
-                uint16_t device = pci_config_read_word(bus, slot, 0, 2);
-                uint32_t class_code     = pci_config_read_dword(bus, slot, 0, 8);
-                uint8_t  base_class     = (class_code >> 24) & 0xFF;
-                uint8_t  subclass       = (class_code >> 16) & 0xFF;
-                uint8_t  prog_interface = (class_code>>8) & 0xFF;
-                uint8_t  revision_ID    = (class_code) & 0xFF;
+                uint16_t device          = pci_config_read_word(bus, slot, 0, 2);
+                uint16_t class_code    ; 
+                uint8_t  prog_interface; 
+                uint8_t  revision_ID   ;
+                uint32_t bar0_base_addr = pci_config_read_dword(bus, slot, 0, 0x10) & 0xFFFFFFF0;
+
+
+
+                uint8_t  base_class    ; 
+                uint8_t  subclass      ; 
+                {
+                    uint32_t general        = pci_config_read_dword(bus, slot, 0, 8);
+                    class_code    = (general >> 16) & 0xFFFF;
+                    base_class    = (general >> 24) & 0xFF;
+                    subclass      = (general >> 16) & 0xFF;
+                    prog_interface= (general >> 8 ) & 0xFF;
+                    revision_ID   = (general      ) & 0xFF;
+                }
                 (void)prog_interface;
                 (void)revision_ID;
-                KERNEL_PRINTF(display,"[PCI] Found device with vendor: %p device: %p class: %d subclass: %d\n",(int64_t)vendor_id, (int64_t)device,(int32_t)base_class, (int32_t)subclass);
+                
+                KERNEL_PRINTF(display,"[PCI] Found device with vendor: %p device: %p class: %d subclass: %d bar0_base_addr: %p\n",(int64_t)vendor_id, (int64_t)device,(int32_t)base_class, (int32_t)subclass,(int64_t)bar0_base_addr);
+                switch(class_code) {
+                case BUKO_DEVICE_NVM_CODE: {
+                    void* addr = (void*)((uint64_t)bar0_base_addr);
+                    uint64_t cap = *((uint64_t*)((char*)addr+0));
+                    uint32_t vs  = *((uint32_t*)((char*)addr+8));
+                    uint32_t INTMS = *((uint32_t*)((char*)addr+12));
+                    uint32_t INTMC = *((uint32_t*)((char*)addr+16));
+                    uint32_t CC = *((uint32_t*)((char*)addr+20));
+                    uint32_t CCSTS = *((uint32_t*)((char*)addr+24));
+                    uint32_t AQA = *((uint32_t*)((char*)addr+28));
+                    uint64_t AQU = *((uint64_t*)((char*)addr+32));
+                    uint64_t ACQ = *((uint64_t*)((char*)addr+40));
+                    
+                    //KERNEL_PRINTF(display, "[PCI] (NVME) Info:\nCapabilities: %p\nVersion: %p\nINTMS: %p\nINTMC: %p\nCC: %p\nCCSTS: %p\nAQA: %p\nAQU: %p\nACQ: %p\n",
+                    //                                        (uint64_t)cap,(uint64_t)vs, (uint64_t)INTMS, (uint64_t)INTMC, (uint64_t)CC,(uint64_t)CCSTS, (uint64_t)AQA,(uint64_t)AQU,(uint64_t)ACQ);
+                    KERNEL_PRINTF(display, "[PCI] (NVME) Stats:\n");
+                    KERNEL_PRINTF(display, "Version: %l.%l\n",(uint64_t)((vs>>16)&0xFF),(uint64_t)((vs>>8)&0xFF));
+                    //KERNEL_PRINTF(display, "Capabilities: %p\n",(uint64_t)cap);
+                    KERNEL_PRINTF(display, "MQES: %d\n",(int32_t)(cap&0xFFFF));
+                    KERNEL_PRINTF(display, "CQR: %d\n",(int32_t)((cap>>16)&1));
+                    KERNEL_PRINTF(display, "AMOS: %d\n",(int32_t)((cap>>17)&0b11));
+                    KERNEL_PRINTF(display, "TO: %d\n",(int32_t)((cap>>24)&0xFF));
+                    KERNEL_PRINTF(display, "DSTRD: %d\n",(int32_t)((cap>>32)&0b1111));
+                    KERNEL_PRINTF(display, "NSSRS: %d\n",(int32_t)((cap>>36)&1));
+                    KERNEL_PRINTF(display, "NSSRS: %d\n",(int32_t)((cap>>37)&0xFF));                              
+                    KERNEL_PRINTF(display, "BPS: %d\n",(int32_t)((cap>>45)&1));
+                    KERNEL_PRINTF(display, "CPS: %d\n",(int32_t)((cap>>46)&0b11));
+                    KERNEL_PRINTF(display, "MPSMIN: %d\n",(int32_t)((cap>>48)&0b1111));
+                    KERNEL_PRINTF(display, "MPSMAX: %d\n",(int32_t)((cap>>52)&0b1111));
+                    KERNEL_PRINTF(display, "PMRS: %d\n",(int32_t)((cap>>56)&0b1));
+                    KERNEL_PRINTF(display, "CMBS: %d\n",(int32_t)((cap>>57)&0b1));
+                    KERNEL_PRINTF(display, "NSSS: %d\n",(int32_t)((cap>>58)&0b1));               
+                    KERNEL_PRINTF(display, "CRMS: %d\n",(int32_t)((cap>>59)&0b11));                
+                }
+                break;
+                }
                 //if(foundDevices % 3 == 0) putC(display, '\n');
                 //foundDevices++;
             }
