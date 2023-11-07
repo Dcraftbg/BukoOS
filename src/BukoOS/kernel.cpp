@@ -413,7 +413,7 @@ extern "C" void kernel() {
                     KERNEL_PRINTF(display, "TO: %d\n",(int32_t)((cap>>24)&0xFF));
                     KERNEL_PRINTF(display, "DSTRD: %d\n",(int32_t)((cap>>32)&0b1111));
                     KERNEL_PRINTF(display, "NSSRS: %d\n",(int32_t)((cap>>36)&1));
-                    KERNEL_PRINTF(display, "NSSRS: %d\n",(int32_t)((cap>>37)&0xFF));                              
+                    KERNEL_PRINTF(display, "CSS: %d\n",(int32_t)((cap>>37)&0xFF));                              
                     KERNEL_PRINTF(display, "BPS: %d\n",(int32_t)((cap>>45)&1));
                     KERNEL_PRINTF(display, "CPS: %d\n",(int32_t)((cap>>46)&0b11));
                     KERNEL_PRINTF(display, "MPSMIN: %d\n",(int32_t)((cap>>48)&0b1111));
