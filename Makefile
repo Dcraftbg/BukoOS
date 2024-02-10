@@ -1,11 +1,12 @@
-# NOTE we use  -fvect-cost-model=very-cheap to disable g++ from optimizing away our infinite loops :D
-# NOTE clang++ breaks with PHDRs overlapping!
+# NOTE: we use  -fvect-cost-model=very-cheap to disable g++ from optimizing away our infinite loops :D
+# But This flag isn't part of clang. Remove it if necessary
+# NOTE: clang++ breaks with PHDRs overlapping!
 CC:=g++
 NASM:=nasm
 QEMU=qemu-system-x86_64
 # NOTE: Original one is qemu-system-x86_64
 LINKER:=ld
-NASM_SOURCE_FILES:=$(wildcard src/BukoOS/libs/*.nasm)
+NASM_SOURCE_FILES:=$(wildcard src/BukoOS/libs/*.nasm src/BukoOS/drivers/*.nasm)
 SOURCE_FILES:=$(wildcard src/BukoOS/**.c src/BukoOS/**.cpp) $(wildcard src/BukoOS/libs/*.cpp) $(wildcard src/BukoOS/drivers/*.cpp)
 VIRTUAL_IMAGE_PATH:=virtual/res/ssd.img
 ifneq ("$(wildcard $(VIRTUAL_IMAGE_PATH))","")
@@ -35,13 +36,13 @@ eenv:
 	$(LINUX_ENV)
 #  -fversion-loops-for-strides -ftree-partial-pre -ftree-loop-distribution -fsplit-paths -fsplit-loops -fpredictive-commoning -fpeel-loops -floop-unroll-and-jam -floop-interchange -fipa-cp-clone -funswitch-loops 
 compile_debug:
-	$(foreach f, $(NASM_SOURCE_FILES), $(LINUX_ENV) $(NASM) -f elf64 $(f) -o $(OBJDIR)/$(basename $(notdir $(f))).no)
+	$(foreach f, $(NASM_SOURCE_FILES), $(LINUX_ENV) $(NASM) -f elf64 $(f) -o $(OBJDIR)/$(basename $(notdir $(f))).no;)
 	$(LINUX_ENV) $(CC) -g $(CC_FLAGS) $(SOURCE_FILES) $(wildcard $(OBJDIR)/*.no) -o $(OBJDEST) -D BUKO_DEBUG -T $(LINKERSCRIPT) -I $(INCLUDES)
 compile_release:
-	$(foreach f, $(NASM_SOURCE_FILES), $(LINUX_ENV) $(NASM) -f elf64 $(f) -o $(OBJDIR)/$(basename $(notdir $(f))).no)
+	$(foreach f, $(NASM_SOURCE_FILES), $(LINUX_ENV) $(NASM) -f elf64 $(f) -o $(OBJDIR)/$(basename $(notdir $(f))).no;)
 	$(LINUX_ENV) $(CC) -g -O3 $(CC_FLAGS) $(SOURCE_FILES) $(wildcard $(OBJDIR)/*.no) -o $(OBJDEST) -D BUKO_RELEASE -T $(LINKERSCRIPT) -I $(INCLUDES) # -fvect-cost-model=very-cheap                
 compile_dist: 
-	$(foreach f, $(NASM_SOURCE_FILES), $(LINUX_ENV) $(NASM) -f elf64 $(f) -o $(OBJDIR)/$(basename $(notdir $(f))).no)
+	$(foreach f, $(NASM_SOURCE_FILES), $(LINUX_ENV) $(NASM) -f elf64 $(f) -o $(OBJDIR)/$(basename $(notdir $(f))).no;)
 	$(LINUX_ENV) $(CC) -O5 $(CC_FLAGS) $(SOURCE_FILES) $(wildcard $(OBJDIR)/*.no) -o $(OBJDEST) -D BUKO_DIST -T $(LINKERSCRIPT) -I $(INCLUDES) -fvect-cost-model=very-cheap
 build_iso:
 	rm -f out/bin/OS.iso

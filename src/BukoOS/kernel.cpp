@@ -16,7 +16,8 @@
 #include "libs/PCI.h"
 #include "drivers/keyboard.h"
 #include "config.h"
-
+#define BUKO_DIST_YEAR 2023
+#define BUKO_DIST_CENTURY ((BUKO_DIST_YEAR)/100)
 
 #define SYS_DIST_URL "https://github.com/Dcraftbg/BukoOS"
 #define SYS_VERSION "0.4.2A"
@@ -29,9 +30,69 @@
 #else
    #error "Running in non recognized mode! Please run with BUKO_DEBUG, BUKO_RELEASE or BUKO_DIST"
 #endif
+
 #define MEMORY_DISPLAY_SIZE (112.0/2.0)
 
+// TBD Table:
+// TODO: Add exception handling to the idt 
+// TODO: Adding tss
+// TODO: Adding syscall system
+// TODO: Task queue
+// TODO: Entering Ring0
+//
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#define NVME_VER_MAJOR(vs)   ((vs >>16)&0xFFFF)
+#define NVME_VER_MINOR(vs)   ((vs >>8 )&0xFF)
+#define NVME_VER_TERT(vs)    ((vs     )&0xFF)
+
+#define NVME_CAP_MQES(cap)   ( cap     &0xFFFF)
+#define NVME_CAP_CQR(cap)    ((cap>>16)&1     )
+#define NVME_CAP_AMOS(cap)   ((cap>>17)&0b11  )
+#define NVME_CAP_TO(cap)     ((cap>>24)&0xFF  )
+#define NVME_CAP_DSTRD(cap)  ((cap>>32)&0b1111)
+#define NVME_CAP_NSSRS(cap)  ((cap>>36)&1     )
+#define NVME_CAP_CSS(cap)    ((cap>>37)&0xFF  )
+#define NVME_CAP_BPS(cap)    ((cap>>45)&1     )
+#define NVME_CAP_CPS(cap)    ((cap>>46)&0b11  )
+#define NVME_CAP_MPSMIN(cap) ((cap>>48)&0b1111)
+#define NVME_CAP_MPSMAX(cap) ((cap>>52)&0b1111)
+#define NVME_CAP_PMRS(cap)   ((cap>>56)&0b1   )
+#define NVME_CAP_CMBS(cap)   ((cap>>57)&0b1   )
+#define NVME_CAP_NSSS(cap)   ((cap>>58)&0b1   )
+#define NVME_CAP_CRMS(cap)   ((cap>>59)&0b11  )
+
+struct NVME_Command {
+   uint32_t command;
+   uint32_t NSID;
+   uint32_t _r[2];
+   uint64_t metadata;
+   uint32_t dataPointer[4];
+   uint32_t args[6];
+};
+struct NVME_Queue_Entry {
+   int8_t _[16];
+};
+#define NVME_ADMIN_CREATE_SUBMISSION_QUEUE 0x01
+#define NVME_ADMIN_CREATE_COMPLETION_QUEUE 0x05
+#define NVME_ADMIN_IDENTIFY                0x06
+
+#define NVME_IO_READ 0x02
+#define NVME_IO_WRITE 0x01
 
 
 #define BUKO_DEVICE_NVM_CODE 0x108
@@ -56,6 +117,10 @@ void mouse_handler() {
 //char cmdBuffer[4096]={0};
 //size_t cmdLen=0;
 
+
+inline uint8_t CMOSConfig=0; 
+
+
 struct RealTime_T {
   int8_t second;
   int8_t minute;
@@ -64,13 +129,8 @@ struct RealTime_T {
   int8_t weekday;
   int8_t monthday;
   int8_t month;
-  int8_t year;
-  int8_t century;
+  int16_t year;
 };
-inline uint64_t getFullYearFromTime(RealTime_T& time) {
-   uint64_t full_year=time.century*100+time.year;
-   return full_year;
-}
 inline int8_t getCMOSregister(int8_t reg) {
   Kernel::outb(0x70, (1 << 7) | (reg)); // 1 << 7 to disable NMI... Maybe I could make it into its own function
   return Kernel::inb(0x71);
@@ -79,7 +139,7 @@ inline int8_t getCMOSregister(int8_t reg) {
 
 #define CMOS_CONFIG_24_HOUR_CLOCK 2
 #define CMOS_CONFIG_BINARY 4
-uint8_t CMOSConfig=0; 
+
 inline uint8_t getHourNormal(uint8_t hour) {
   if(!(CMOSConfig & CMOS_CONFIG_24_HOUR_CLOCK) && (hour & 0x80)) {
      hour = ((hour & 0x7F)+12)%24;
@@ -91,7 +151,7 @@ inline uint8_t getHourNormal(uint8_t hour) {
 }
 inline void initCMOSConfig() {
   uint8_t statB = getCMOSregister(0x0B);
-  CMOSConfig = statB; // TODO: Not sure if this works perfectly fine all the time bu yes
+  CMOSConfig = statB; // TODO: Not sure if this works perfectly fine all the time but yeah
 }
 inline uint8_t CMOS_update_in_progress() {
    Kernel::outb(0x70, 0x0A);
@@ -101,8 +161,7 @@ inline bool RealTime_T_eq(RealTime_T& current, RealTime_T& other) {
   return current.second== other.second && current.minute == other.minute &&
          current.hour  == other.hour   && current.weekday == other.weekday &&
          current.monthday == other.monthday && current.monthday == other.monthday &&
-         current.month == other.month && current.year == other.year &&
-         current.century == other.century;
+         current.month == other.month && current.year == other.year;
 }
 RealTime_T* timeFromCMOS(RealTime_T* last) {
   RealTime_T currentTime={0};
@@ -113,7 +172,8 @@ RealTime_T* timeFromCMOS(RealTime_T* last) {
   currentTime.monthday=last->monthday; 
   currentTime.month   =last->month   ; 
   currentTime.year    =last->year    ; 
-  currentTime.century =last->century ; 
+  //currentTime.century =last->century ; 
+  //uint32_t current_Century=BUKO_DIST_CENTURY;
   do { 
         last->second  =currentTime.second  ; 
         last->minute  =currentTime.minute  ; 
@@ -122,7 +182,7 @@ RealTime_T* timeFromCMOS(RealTime_T* last) {
         last->monthday=currentTime.monthday; 
         last->month   =currentTime.month   ; 
         last->year    =currentTime.year    ; 
-        last->century =currentTime.century ;
+        //last->century =currentTime.century ;
         while(CMOS_update_in_progress());
         currentTime.second   = getCMOSregister(0x00);
         currentTime.minute   = getCMOSregister(0x02);
@@ -131,23 +191,38 @@ RealTime_T* timeFromCMOS(RealTime_T* last) {
         currentTime.monthday = getCMOSregister(0x07);
         currentTime.month    = getCMOSregister(0x08);
         currentTime.year     = getCMOSregister(0x09);
-        currentTime.century  = getCMOSregister(0x32);
+        uint8_t cent = getCMOSregister(0x32);
+        if(!(CMOSConfig & CMOS_CONFIG_BINARY)) {
+           currentTime.second   = BCD_TO_BINARY(currentTime.second  ); 
+           currentTime.minute   = BCD_TO_BINARY(currentTime.minute  ); 
+           currentTime.hour     = BCD_TO_BINARY(currentTime.hour    ); 
+           currentTime.weekday  = BCD_TO_BINARY(currentTime.weekday ); 
+           currentTime.monthday = BCD_TO_BINARY(currentTime.monthday); 
+           currentTime.month    = BCD_TO_BINARY(currentTime.month   ); 
+           currentTime.year     = BCD_TO_BINARY(currentTime.year    ); 
+           cent                 = BCD_TO_BINARY(cent);
+        }
+        currentTime.year     = (cent ? cent : BUKO_DIST_CENTURY)*100 + currentTime.year;
   } while(!RealTime_T_eq(currentTime,*last));
   //initCMOSConfig();
-  if(!(CMOSConfig & CMOS_CONFIG_BINARY)) {
-     last->second   = BCD_TO_BINARY(last->second  ); 
-     last->minute   = BCD_TO_BINARY(last->minute  ); 
-     last->hour     = BCD_TO_BINARY(last->hour    ); 
-     last->weekday  = BCD_TO_BINARY(last->weekday ); 
-     last->monthday = BCD_TO_BINARY(last->monthday); 
-     last->month    = BCD_TO_BINARY(last->month   ); 
-     last->year     = BCD_TO_BINARY(last->year    ); 
-     last->century  = BCD_TO_BINARY(last->century ); 
-  }
   last->hour = getHourNormal(last->hour);
+  //last->century = last->century ? last->century : BUKO_DIST_CENTURY;
   return last;
 }
+
+inline RealTime_T currentTime={0};
+inline RealTime_T bufferTime ={0};
+
+namespace Driver {
+   void RTC_driver() {
+        KERNEL_PRINTF(display, "RTC_driver!\n");
+   }
+};
+
+
+
 void keyboard_handler(BukoKeyboardAction actionType, int key) {
+   KERNEL_PRINTF(display, "Hello!?!?!");
    static bool shifted=false;
    switch(key) {
         case 0: break;
@@ -192,8 +267,9 @@ void keyboard_handler(BukoKeyboardAction actionType, int key) {
 
 }
 extern "C" void kernel() {   
-
+    asm volatile ("cli");
     static bool running=true;
+    asm volatile ("xchg %bx, %bx");
     // NOTE: Maybe if bits are not 32, you could display information another way? Like maybe 
     // Emergency Cchar display. Like you can display only raw colors. Explaining that the OS requires the full
     // 32 bit display in order to run correctly (as a Workspace)
@@ -315,9 +391,11 @@ extern "C" void kernel() {
             *pageSet |= (1 << (PageIndex+j)%8);
         }
     }
-    asm volatile ("cli");
     KERNEL_PB_PRINTF(display, "Initializing Global descriptor table...");    
     Kernel::GDT* gdt = (Kernel::GDT*)GlobalMemoryMap.allocate(1);
+    if(!gdt) {
+        KERNEL_CRASH("Could not allocate memory for gdt");
+    }
     *gdt = Kernel::GDT();
 
     Kernel::GDTDescriptor gdt_descriptor;
@@ -326,6 +404,9 @@ extern "C" void kernel() {
     gdt_descriptor.addr = (uint64_t)gdt;
     asm volatile ("lgdt %0" : : "m"(gdt_descriptor));
     Kernel::IDT* idt = (Kernel::IDT*)GlobalMemoryMap.allocate(1);
+    if(!idt) {
+        KERNEL_CRASH("Could not allocate memory for idt");
+    }
     *idt = Kernel::IDT(idt);
     Kernel::IDTDescriptor idt_descriptor;
     idt_descriptor.size = 4096;
@@ -336,7 +417,8 @@ extern "C" void kernel() {
     KERNEL_PB_PRINTF(display, "Initialized gdt registers!");
 
     KERNEL_PB_PRINTF(display, "Initializing keyboard driver...");
-    idt->Init(0x21, IDT_TYPE_HARDWARE, (void*)Driver::keyboard);
+    idt->Init(0x21, IDT_TYPE_HARDWARE, (void*)_base_driver_ps2_keyboard);
+    //idt->Init(0x28, IDT_TYPE_HARDWARE, (void*)Driver::RTC_driver);
 #if 0
     KERNEL_PB_PRINTF(display, "Initializing mouse driver...");
     idt->Init(0x28+4, IDT_TYPE_HARDWARE, (void*)mouse_handler); // mouse
@@ -358,11 +440,18 @@ extern "C" void kernel() {
     Kernel::outb(0xA1, 0); // Initializing PIC
 
 
-    Kernel::outb(0x21, 0b11111111); // Disable all master PIC hardware interrupts, except keyboard
+    Kernel::outb(0x21, 0b11111101); // Disable all master PIC hardware interrupts, except keyboard
     Kernel::outb(0xA1, 0b11111111); // Disable all slave PIC hardware interrupts
+        
+    // ------------------PIC RTC initialization------------------
+    //Kernel::outb(0x70, 0x8B);
+    //uint8_t prev=Kernel::inb(0x71);
+    //Kernel::outb(0x70, 0x8B);
+    //Kernel::outb(0x71, prev | 0x40);
     // ------------------Done configuring PIC------------------
     //size_t foundDevices=0;
     // ------------------Printing vendor IDs------------------
+#if 0
     for(uint8_t bus=0; bus<255; ++bus) {
         for(uint8_t slot=0; slot<32; ++slot) {
             uint16_t vendor_id = pci_config_read_word(bus, slot, 0, 0);
@@ -405,9 +494,9 @@ extern "C" void kernel() {
                     //KERNEL_PRINTF(display, "[PCI] (NVME) Info:\nCapabilities: %p\nVersion: %p\nINTMS: %p\nINTMC: %p\nCC: %p\nCCSTS: %p\nAQA: %p\nAQU: %p\nACQ: %p\n",
                     //                                        (uint64_t)cap,(uint64_t)vs, (uint64_t)INTMS, (uint64_t)INTMC, (uint64_t)CC,(uint64_t)CCSTS, (uint64_t)AQA,(uint64_t)AQU,(uint64_t)ACQ);
                     KERNEL_PRINTF(display, "[PCI] (NVME) Stats:\n");
-                    KERNEL_PRINTF(display, "Version: %l.%l\n",(uint64_t)((vs>>16)&0xFF),(uint64_t)((vs>>8)&0xFF));
+                    KERNEL_PRINTF(display, "Version: %l.%l\n",(uint64_t)((vs>>16)&0xFFFF),(uint64_t)((vs>>8)&0xFF));
                     //KERNEL_PRINTF(display, "Capabilities: %p\n",(uint64_t)cap);
-                    KERNEL_PRINTF(display, "MQES: %d\n",(int32_t)(cap&0xFFFF));
+                    KERNEL_PRINTF(display, "MQES: %d\n",NVME_CAP_MQES(cap));
                     KERNEL_PRINTF(display, "CQR: %d\n",(int32_t)((cap>>16)&1));
                     KERNEL_PRINTF(display, "AMOS: %d\n",(int32_t)((cap>>17)&0b11));
                     KERNEL_PRINTF(display, "TO: %d\n",(int32_t)((cap>>24)&0xFF));
@@ -430,13 +519,14 @@ extern "C" void kernel() {
             }
         }
     } 
+#endif
     // ---------------Done configuring PCI---------------
     
 
     // --------------Getting date and time----------------
-    initCMOSConfig();
-    RealTime_T time={0}; 
-    timeFromCMOS(&time);
+    //initCMOSConfig();
+    //RealTime_T time={0}; 
+    //timeFromCMOS(&time);
     //KERNEL_PRINTF(display,"year: %d\n"    ,(int)getFullYearFromTime(time));
     //KERNEL_PRINTF(display,"month: %d\n"   ,(int)time.month);
     //KERNEL_PRINTF(display,"day: %d\n"     ,(int)time.monthday);
@@ -446,22 +536,40 @@ extern "C" void kernel() {
     //KERNEL_PRINTF(display,"second: %d\n"  ,(int)time.second);
     //KERNEL_PRINTF(display,"CMOS Config state (B): %d\n",(int)CMOSConfig);
     //KERNEL_PRINTF(display,"CMOS is configured to use %s and %s\n",CMOSConfig & CMOS_CONFIG_24_HOUR_CLOCK ? "standard time": "am/pm", CMOSConfig & CMOS_CONFIG_BINARY ? "binary mode" : "bsd mode");
+
+    KERNEL_PB_PRINTF(display, "Enabling interrupts...");
+    asm volatile ("sti");
+    KERNEL_PB_PRINTF(display, "Done!");
+#if 0
     {
       char minbuf[3]={0};
-
       stdString::itostr(minbuf, 2, time.minute);
       if(time.minute < 10) {
         minbuf[1]=minbuf[0];
         minbuf[0]='0';
       }
-      KERNEL_PRINTF(display,"%d:%s: %d/%d/%d",(int)time.hour,minbuf, (int)time.monthday,(int)time.month, (int)getFullYearFromTime(time));
-    }
-    KERNEL_PB_PRINTF(display, "Enabling interrupts...");
-    asm volatile ("sti");
-    KERNEL_PB_PRINTF(display, "Done!");
+      KERNEL_PB_PRINTF(display,"%d:%s: %d/%d/%d\n",(int)time.hour,minbuf, (int)time.monthday,(int)time.month, (int)time.year);
+    } 
+#endif
     while(running) {
+        #if 0
+        RealTime_T now={0};
+        timeFromCMOS(&now);
+
+        if(time.minute!=now.minute)
+        {
+          time=now;
+          char minbuf[3]={0};
+          stdString::itostr(minbuf, 2, time.minute);
+          if(time.minute < 10) {
+            minbuf[1]=minbuf[0];
+            minbuf[0]='0';
+          }
+          KERNEL_PB_PRINTF(display,"%d:%s: %d/%d/%d\n",(int)time.hour,minbuf, (int)time.monthday,(int)time.month, (int)time.year);
+        } 
+        #endif
         asm volatile("hlt" : "+g"(running));
-        continue;
+        //continue;
     }
     //asm volatile("hlt" : "+g"(running));
     KERNEL_PB_PRINTF(display, "Shutting down!");

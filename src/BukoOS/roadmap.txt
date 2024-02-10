@@ -1,0 +1,5 @@
+(Adding exception handling to idt)
+   |
+(Adding tss)
+   |
+(Adding syscall system)

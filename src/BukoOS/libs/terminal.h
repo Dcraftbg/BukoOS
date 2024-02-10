@@ -43,4 +43,6 @@ namespace stdTerminal {
 #define KERNEL_RESET_CURSOR()
 #endif
 
-
+#ifndef BUKO_SERVER_BUILD
+extern DisplayInfo display;
+#endif

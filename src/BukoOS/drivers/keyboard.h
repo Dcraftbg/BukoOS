@@ -11,9 +11,6 @@
 #include <libs/string.h>
 #include <config.h>
 void keyboard_handler(BukoKeyboardAction actionType, int key); 
-#ifndef BUKO_SERVER_BUILD
-extern DisplayInfo display;
-#endif
-namespace Driver {
-   void keyboard(); 
-};
+extern "C" void _driver_ps2_keyboard();
+extern "C" void _base_driver_ps2_keyboard();
+

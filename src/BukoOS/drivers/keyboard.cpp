@@ -1,14 +1,18 @@
 #include "keyboard.h"
-void Driver::keyboard() {
-    size_t i=0;
+//#define PS2_DATA_PORT 0x60
+extern "C" void _driver_ps2_keyboard() {
+    int i=0;
     for(; i<3; ++i) {
         char keyboard = Kernel::inb(0x64);
         if(keyboard&0x01) break;
     }
-    if(i==3) return;
+    if(i==3) {
+//      KERNEL_PRINTF(display, "No data!\n");
+        Kernel::outb(0x20, 0x20);
+        return;
+    }
     char c = Kernel::inb(0x60);
     int result=0;
-
     BukoKeyboardAction actionType=BUKO_KEYBOARD_ACTION_PRESS;
     if(c!=0) {
        switch(c) {
@@ -124,6 +128,7 @@ void Driver::keyboard() {
    }
    keyboard_handler(actionType, result);
    Kernel::outb(0x20, 0x20);
+   //Kernel::outb(0x20, 0x20);
 #if 0
    switch(result) {
         case 0: break;
