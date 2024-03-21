@@ -60,10 +60,10 @@ namespace Kernel {
         uint64_t kernelCodeSegment;
         uint64_t kernelDataSegment;
         uint64_t syscallsSegment;
-        uint64_t userCodeSegment;
         uint64_t userDataSegment;
+        uint64_t userCodeSegment;
         TSSSegment tssMap[4];
-        GDT() : nullDescriptor(0), kernelCodeSegment(0x0020990000000000), kernelDataSegment(0x0020930000000000), syscallsSegment(0), userCodeSegment(0x0020F30000000000), userDataSegment(0x0020F90000000000) {}
+        GDT() : nullDescriptor(0), kernelCodeSegment(0x0020980000000000), kernelDataSegment(0x0020920000000000), syscallsSegment(0), userDataSegment(0x0020F20000000000), userCodeSegment(0x0020F80000000000) {}
    };
 
 };
