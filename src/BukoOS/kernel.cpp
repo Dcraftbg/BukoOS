@@ -222,7 +222,6 @@ namespace Driver {
 
 
 void keyboard_handler(BukoKeyboardAction actionType, int key) {
-   KERNEL_PRINTF(display, "Hello!?!?!");
    static bool shifted=false;
    switch(key) {
         case 0: break;
@@ -281,6 +280,7 @@ extern "C" void kernel() {
 	  if( limine_framebuffer_request.response == NULL || limine_framebuffer_request.response->framebuffer_count != 1 || limine_framebuffer_request.response->framebuffers[0] -> bpp != 32 ) {
           // Switch to invalid display info
           // Probably display something here telling the user they have invalid info. Like if the response IS something. if its not, there is no point in reporting anything. I mean you literally can't
+          // Maybe consider also logging to serial? not sure tho
       }
       else {	
           display=DisplayInfo((Pixel*)limine_framebuffer_request.response->framebuffers[0]->address, limine_framebuffer_request.response->framebuffers[0]->width, limine_framebuffer_request.response->framebuffers[0]->height, limine_framebuffer_request.response->framebuffers[0]->pitch);

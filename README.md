@@ -26,13 +26,15 @@ Honorable mention to:
 > wsl -d Ubuntu                         # Optionally if you want to build faster
 > make init
 > make dist                             # Compiles for dist and makes OS.iso, You could also compile for release and debug - debug with no optimisation and debug symbols, release with some optimisation and debug symbols
+# NOTE: You might have to run the command above twice because of some dumb issue with nasm and make
 > make run_qemu                         # Optionally run OS directly in qemu
 ```
 ## Linux
 ```sh
-> sudo apt install xorriso && sudo apt install g++  # apt install or use your local package manager if you're not on Ubuntu
+> sudo apt install xorriso binutils     # apt install or use your local package manager if you're not on Ubuntu
 > make init
 > make dist
+# NOTE: You might have to run the command above twice because of some dumb issue with nasm and make
 > make run_qemu                         # Optionally run the OS directly in qemu
 ```
 ## MacOS
